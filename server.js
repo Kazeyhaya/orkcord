@@ -56,7 +56,7 @@ async function setupDatabase() {
     
     console.log('Tabelas "messages", "posts" e "profiles" verificadas/criadas.');
 
-  } catch (err) { // <-- AQUI ESTAVA SEU ERRO (faltava parênteses)
+  } catch (err) { // <-- AQUI ESTAVA O ERRO ANTIGO
     console.error('Erro ao criar tabelas:', err);
   } finally {
     client.release();
@@ -82,4 +82,131 @@ app.get('/api/posts', async (req, res) => {
     );
     res.json({ posts: result.rows });
   } catch (err) {
-    console.error('Erro ao buscar posts
+    console.error('Erro ao buscar posts:', err);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// [POST] Rota para CRIAR um novo post no Feed
+app.post('/api/posts', async (req, res) => {
+  const { user, text } = req.body;
+  if (!user || !text) {
+    return res.status(400).json({ error: 'Usuário e texto são obrigatórios' });
+  }
+  try {
+    const result = await pool.query(
+      `INSERT INTO posts ("user", text, timestamp) VALUES ($1, 2, NOW()) RETURNING *`,
+      [user, text]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Erro ao criar post:', err);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// --- API (Parte "Perfil") ---
+
+// [GET] Rota para LER o perfil (a bio) de um usuário
+app.get('/api/profile/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const result = await pool.query(
+      `SELECT bio FROM profiles WHERE "user" = $1`,
+      [username]
+    );
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]); // Envia a bio: { bio: "..." }
+    } else {
+      res.json({ bio: "Apaixonado por comunidades e bate-papo." });
+    }
+  } catch (err) {
+    console.error('Erro ao buscar perfil:', err);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// [POST] Rota para CRIAR ou ATUALIZAR a bio
+app.post('/api/profile', async (req, res) => {
+  const { user, bio } = req.body;
+  if (!user || bio === undefined) {
+    return res.status(400).json({ error: 'Usuário e bio são obrigatórios' });
+  }
+  try {
+    const result = await pool.query(
+      `INSERT INTO profiles ("user", bio) 
+       VALUES ($1, $2)
+       ON CONFLICT ("user") 
+       DO UPDATE SET bio = $2
+       RETURNING *`,
+      [user, bio]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Erro ao atualizar bio:', err);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+
+// --- Lógica do Socket.IO (Parte "Discord") ---
+io.on('connection', (socket) => {
+  console.log(`Um utilizador conectou-se: ${socket.id}`);
+
+  // 1. OUVIR QUANDO O UTILIZADOR MUDA DE CANAL (CORRIGIDO)
+  socket.on('joinChannel', async (data) => {
+    const channelName = (typeof data === 'object' && data.channel) ? data.channel : data;
+    if (!channelName || typeof channelName !== 'string') {
+      console.error('Erro: Tentativa de entrar em canal inválido.', data);
+      return;
+    }
+    try {
+      console.log(`Utilizador ${socket.id} entrou no canal ${channelName}`);
+      socket.join(channelName); 
+      
+      const result = await pool.query(
+        `SELECT * FROM messages WHERE channel = $1 ORDER BY timestamp ASC LIMIT 50`, 
+        [channelName]
+      );
+      const history = result.rows.map(row => ({
+        ...row,
+        user: row.user,
+        timestamp: new Date(row.timestamp).toLocaleString('pt-BR')
+      }));
+      socket.emit('loadHistory', history);
+    } catch (err) {
+      console.error('Erro em joinChannel:', err);
+    }
+  });
+
+  // 2. OUVIR QUANDO O UTILIZADOR ENVIA UMA MENSAGEM
+  socket.on('sendMessage', async (data) => {
+    const { channel, user, message } = data;
+    const timestamp = new Date();
+    try {
+      await pool.query(
+        `INSERT INTO messages (channel, "user", message, timestamp) VALUES ($1, $2, $3, $4)`,
+        [channel, user, message, timestamp]
+      );
+      const broadcastData = {
+        ...data,
+        timestamp: timestamp.toLocaleString('pt-BR')
+      };
+      io.to(channel).emit('newMessage', broadcastData);
+    } catch (err) {
+      console.error('Erro ao guardar mensagem:', err);
+    }
+  });
+
+  // 3. OUVIR QUANDO O UTILIZADOR SE DESCONECTA
+  socket.on('disconnect', () => {
+    console.log(`Utilizador desconectou-se: ${socket.id}`);
+  });
+});
+
+// --- Iniciar o Servidor ---
+setupDatabase().then(() => {
+  server.listen(port, () => {
+    console.log(`OrkCord a rodar na porta ${port}`);
+  });
+});
