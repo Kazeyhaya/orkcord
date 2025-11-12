@@ -12,7 +12,6 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
-// ... (Configuração do Pool e setupDatabase() - sem mudanças) ...
 // --- Configuração do Banco de Dados PostgreSQL ---
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -25,42 +24,58 @@ const pool = new Pool({
 async function setupDatabase() {
   const client = await pool.connect();
   try {
+    // ... (tabelas messages, posts, profiles, testimonials, comments, follows - sem mudanças)
+    await client.query(`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, channel TEXT NOT NULL, "user" TEXT NOT NULL, message TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
+    await client.query(`CREATE TABLE IF NOT EXISTS posts (id SERIAL PRIMARY KEY, "user" TEXT NOT NULL, text TEXT NOT NULL, likes INT DEFAULT 0, timestamp TIMESTAMPTZ DEFAULT NOW())`);
+    await client.query(`CREATE TABLE IF NOT EXISTS profiles ("user" TEXT PRIMARY KEY, bio TEXT)`);
+    await client.query(`CREATE TABLE IF NOT EXISTS testimonials (id SERIAL PRIMARY KEY, "from_user" TEXT NOT NULL, "to_user" TEXT NOT NULL, text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
+    await client.query(`CREATE TABLE IF NOT EXISTS comments (id SERIAL PRIMARY KEY, post_id INT NOT NULL REFERENCES posts(id) ON DELETE CASCADE, "user" TEXT NOT NULL, text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
+    await client.query(`CREATE TABLE IF NOT EXISTS follows (id SERIAL PRIMARY KEY, follower_user TEXT NOT NULL, following_user TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW(), UNIQUE(follower_user, following_user))`);
+
+    // ===============================================
+    // 👇 NOVA TABELA 'COMMUNITIES' ADICIONADA AQUI 👇
+    // ===============================================
     await client.query(`
-      CREATE TABLE IF NOT EXISTS messages (
-        id SERIAL PRIMARY KEY, channel TEXT NOT NULL, "user" TEXT NOT NULL, 
-        message TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW()
+      CREATE TABLE IF NOT EXISTS communities (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        emoji TEXT, -- Por agora, vamos usar um emoji como "ícone"
+        members INT DEFAULT 0,
+        timestamp TIMESTAMPTZ DEFAULT NOW()
       )
     `);
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS posts (
-        id SERIAL PRIMARY KEY, "user" TEXT NOT NULL, text TEXT NOT NULL,
-        likes INT DEFAULT 0, timestamp TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS profiles ("user" TEXT PRIMARY KEY, bio TEXT)
-    `);
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS testimonials (
-        id SERIAL PRIMARY KEY, "from_user" TEXT NOT NULL, "to_user" TEXT NOT NULL,
-        text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS comments (
-        id SERIAL PRIMARY KEY, post_id INT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-        "user" TEXT NOT NULL, text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS follows (
-        id SERIAL PRIMARY KEY, follower_user TEXT NOT NULL, following_user TEXT NOT NULL,
-        timestamp TIMESTAMPTZ DEFAULT NOW(), UNIQUE(follower_user, following_user)
-      )
-    `);
-    console.log('Tabelas (incluindo "follows") verificadas/criadas.');
+    
+    console.log('Tabelas (incluindo "communities") verificadas/criadas.');
+
   } catch (err) {
     console.error('Erro ao criar tabelas:', err);
+  } finally {
+    client.release();
+  }
+}
+
+// ===============================================
+// 👇 NOVA FUNÇÃO PARA INSERIR DADOS FALSOS 👇
+// ===============================================
+async function seedDatabase() {
+  const client = await pool.connect();
+  try {
+    // Verifica se já existem comunidades
+    const res = await client.query('SELECT 1 FROM communities LIMIT 1');
+    if (res.rows.length === 0) {
+      console.log('Populando o banco de dados com comunidades de teste...');
+      // Insere comunidades de teste
+      await client.query(`
+        INSERT INTO communities (name, description, emoji, members) VALUES
+        ('Tecnologia 💻', 'A comunidade oficial para falar de hardware, software e programação.', '💻', 1),
+        ('Música 🎵', 'Do Rock ao Pop, partilhe as suas batidas favoritas.', '🎵', 1),
+        ('Games 🎮', 'Discussão geral, do retro ao moderno. Encontre o seu "x1" aqui.', '🎮', 1)
+      `);
+      console.log('Comunidades de teste inseridas.');
+    }
+  } catch (err) {
+    console.error('Erro ao popular dados:', err);
   } finally {
     client.release();
   }
@@ -75,11 +90,10 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'agora.html')); 
 });
 
-// --- API (Parte "Feed") ---
-
-// [GET] Rota para LER o feed PERSONALIZADO (Esta está correta)
+// --- API (Parte "Feed" e "Explorar Posts") ---
+// ... (rotas /api/posts, /api/posts/explore, /api/posts - POST, /like, /unlike - sem mudanças)
 app.get('/api/posts', async (req, res) => {
-  const { user } = req.query; // ex: /api/posts?user=Alexandre
+  const { user } = req.query; 
   if (!user) {
     return res.status(400).json({ error: 'Utilizador não fornecido' });
   }
@@ -98,14 +112,8 @@ app.get('/api/posts', async (req, res) => {
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
-
-// ===============================================
-// 👇 NOVA ROTA EXPLORAR ADICIONADA AQUI 👇
-// ===============================================
-// [GET] Rota para LER o feed GLOBAL (Explorar)
 app.get('/api/posts/explore', async (req, res) => {
   try {
-    // Esta é a lógica "antiga" - mostra tudo
     const result = await pool.query(
       `SELECT * FROM posts ORDER BY timestamp DESC LIMIT 30`
     );
@@ -115,9 +123,6 @@ app.get('/api/posts/explore', async (req, res) => {
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
-
-
-// [POST] Rota para CRIAR um novo post no Feed
 app.post('/api/posts', async (req, res) => {
   const { user, text } = req.body;
   if (!user || !text) {
@@ -134,9 +139,6 @@ app.post('/api/posts', async (req, res) => {
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
-
-// ... (Todas as outras rotas - /like, /unlike, /profile, /testimonials, /comments, /follow, /unfollow - continuam aqui, sem mudanças) ...
-// [POST] Rota para DAR LIKE em um post
 app.post('/api/posts/:id/like', async (req, res) => {
   try {
     const { id } = req.params; 
@@ -153,8 +155,6 @@ app.post('/api/posts/:id/like', async (req, res) => {
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
-
-// [POST] Rota para DESCURTIR (UNLIKE) um post
 app.post('/api/posts/:id/unlike', async (req, res) => {
   try {
     const { id } = req.params; 
@@ -173,7 +173,8 @@ app.post('/api/posts/:id/unlike', async (req, res) => {
   }
 });
 
-// --- API (Parte "Perfil") ---
+// --- API (Perfil, Depoimentos, Comentários, Seguir) ---
+// ... (rotas /api/profile, /testimonials, /comments, /follow, /unfollow - sem mudanças) ...
 app.get('/api/profile/:username', async (req, res) => {
   try {
     const { username } = req.params;
@@ -191,7 +192,6 @@ app.get('/api/profile/:username', async (req, res) => {
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
-
 app.post('/api/profile', async (req, res) => {
   const { user, bio } = req.body;
   if (!user || bio === undefined) {
@@ -212,8 +212,6 @@ app.post('/api/profile', async (req, res) => {
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
-
-// --- API (Parte "Depoimentos") ---
 app.get('/api/testimonials/:username', async (req, res) => {
   try {
     const { username } = req.params;
@@ -227,7 +225,6 @@ app.get('/api/testimonials/:username', async (req, res) => {
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
-
 app.post('/api/testimonials', async (req, res) => {
   const { from_user, to_user, text } = req.body; 
   if (!from_user || !to_user || !text) {
@@ -244,8 +241,6 @@ app.post('/api/testimonials', async (req, res) => {
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
-
-// --- API (Parte "Comentários") ---
 app.get('/api/posts/:id/comments', async (req, res) => {
   try {
     const { id } = req.params; // ID do post
@@ -278,9 +273,6 @@ app.post('/api/posts/:id/comments', async (req, res) => {
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
-
-
-// --- API (Parte "Seguir") ---
 app.get('/api/isfollowing/:username', async (req, res) => {
   const { follower } = req.query;
   const { username } = req.params;
@@ -298,7 +290,6 @@ app.get('/api/isfollowing/:username', async (req, res) => {
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
-
 app.post('/api/follow', async (req, res) => {
   const { follower, following } = req.body; 
   if (!follower || !following) {
@@ -315,7 +306,6 @@ app.post('/api/follow', async (req, res) => {
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
-
 app.post('/api/unfollow', async (req, res) => {
   const { follower, following } = req.body;
   if (!follower || !following) {
@@ -333,10 +323,26 @@ app.post('/api/unfollow', async (req, res) => {
   }
 });
 
-// --- Lógica do Socket.IO (Parte "Discord") ---
+// ===============================================
+// 👇 NOVA ROTA "EXPLORAR COMUNIDADES" AQUI 👇
+// ===============================================
+app.get('/api/communities/explore', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM communities ORDER BY members DESC`
+    );
+    res.json({ communities: result.rows });
+  } catch (err) {
+    console.error('Erro ao buscar comunidades:', err);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+
+// --- Lógica do Socket.IO (Chat) ---
+// ... (sem mudanças) ...
 io.on('connection', (socket) => {
   console.log(`Um utilizador conectou-se: ${socket.id}`);
-
   socket.on('joinChannel', async (data) => {
     const channelName = (typeof data === 'object' && data.channel) ? data.channel : data;
     if (!channelName || typeof channelName !== 'string') {
@@ -346,7 +352,6 @@ io.on('connection', (socket) => {
     try {
       console.log(`Utilizador ${socket.id} entrou no canal ${channelName}`);
       socket.join(channelName); 
-      
       const result = await pool.query(
         `SELECT * FROM messages WHERE channel = $1 ORDER BY timestamp ASC LIMIT 50`, 
         [channelName]
@@ -361,7 +366,6 @@ io.on('connection', (socket) => {
       console.error('Erro em joinChannel:', err);
     }
   });
-
   socket.on('sendMessage', async (data) => {
     const { channel, user, message } = data;
     const timestamp = new Date();
@@ -374,20 +378,21 @@ io.on('connection', (socket) => {
         ...data,
         timestamp: timestamp.toLocaleString('pt-BR')
       };
-      io.to(channel).emit('newMessage', data);
+      io.to(channel).emit('newMessage', broadcastData);
     } catch (err) {
       console.error('Erro ao guardar mensagem:', err);
     }
   });
-
   socket.on('disconnect', () => {
     console.log(`Utilizador desconectou-se: ${socket.id}`);
   });
 });
 
 // --- Iniciar o Servidor ---
-setupDatabase().then(() => {
-  server.listen(port, () => {
-    console.log(`Agora a rodar na porta ${port}`);
+setupDatabase()
+  .then(() => seedDatabase()) // 👈 MUDANÇA: Chama o 'seedDatabase' depois do 'setup'
+  .then(() => {
+    server.listen(port, () => {
+      console.log(`Agora a rodar na porta ${port}`);
+    });
   });
-});

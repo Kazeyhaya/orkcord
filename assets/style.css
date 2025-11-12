@@ -28,7 +28,7 @@ body{
 }
 a{color:inherit;text-decoration:none}
 
-/* 👇 MUDANÇA: Layout base (o JS vai adicionar view-home ou view-community) 👇 */
+/* Layout base */
 .app{
   display:grid;
   height:100vh;
@@ -65,7 +65,6 @@ a{color:inherit;text-decoration:none}
 .add-btn:hover{color:#fff;border-color:rgba(255,255,255,.4)}
 /* Channels */
 .channels{grid-area: channels;background: var(--discord-panel);border:1px solid rgba(255,255,255,.06);border-radius: var(--radius);padding:12px;display:flex;flex-direction:column;gap:10px;box-shadow: var(--shadow);min-width:240px}
-/* .channels.hidden{display:none} <- Não precisamos mais disto */
 .community-card{background: linear-gradient(180deg, rgba(224,87,161,.14), rgba(109,156,255,.1));border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;display:flex;gap:10px;align-items:center}
 .community-avatar{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background: radial-gradient(80% 80% at 20% 20%, #fff2, transparent 60%), linear-gradient(135deg, var(--orkut-pink), var(--orkut-blue));font-weight:800}
 .community-info{display:flex;flex-direction:column;line-height:1.2}
@@ -77,23 +76,20 @@ a{color:inherit;text-decoration:none}
 .channel.active,.channel:hover{background:rgba(255,255,255,.06);color:#fff}
 .hash{opacity:.7}
 
-/* =============================================== */
-/* 👇 MUDANÇA: Novas regras de Layout (Grid) 👇 */
-/* =============================================== */
+/* Layout (Grid) */
 
-/* Modo "Home" (Feed, Explorar, Perfil) */
+/* Modo "Home" (Feed, Explorar, Perfil, Explorar Servidores) */
 .app.view-home {
   grid-template-columns: 80px 1fr;
   grid-template-rows: 64px 1fr 64px;
   grid-template-areas: "servers header" "servers content" "servers userbar";
 }
-/* No modo Home, a área 'content' é usada pelo feed, explorar e perfil */
 .app.view-home .feed,
 .app.view-home .profile,
-.app.view-home .explore {
+.app.view-home .explore,
+.app.view-home .explore-servers { /* Adicionado explore-servers */
   grid-area: content;
 }
-/* No modo Home, escondemos o chat e os canais */
 .app.view-home .channels,
 .app.view-home .chat {
   display: none;
@@ -102,30 +98,26 @@ a{color:inherit;text-decoration:none}
 /* Modo "Comunidade" (Chat) */
 .app.view-community {
   grid-template-columns: 80px 280px 1fr;
-  grid-template-rows: 1fr 64px; /* O chat ocupa a altura toda */
+  grid-template-rows: 1fr 64px; 
   grid-template-areas: "servers channels chat" "servers userbar chat";
 }
-/* No modo Comunidade, mostramos o chat e os canais */
 .app.view-community .channels,
 .app.view-community .chat {
-  display: grid; /* O .chat é um grid interno */
+  display: grid; 
 }
-/* No modo Comunidade, escondemos o header principal e os ecrãs de "Home" */
 .app.view-community .header,
 .app.view-community .feed,
 .app.view-community .profile,
-.app.view-community .explore {
+.app.view-community .explore,
+.app.view-community .explore-servers { /* Adicionado explore-servers */
   display: none;
 }
 
 
 /* Chat */
-/* 👇 MUDANÇA: .chat agora usa grid-area: chat 👇 */
 .chat{grid-area: chat;background: var(--discord-dark);border:1px solid rgba(255,255,255,.06);border-radius: var(--radius);display:grid;grid-template-rows: 56px 1fr 74px;box-shadow: var(--shadow)}
 /* Feed */
-/* 👇 MUDANÇA: .feed agora usa a área 'content' (definida em .view-home) 👇 */
 .feed{
-  /* grid-area: content; */ /* Definido acima */
   background: var(--discord-dark);
   border:1px solid rgba(255,255,255,.06);
   border-radius: var(--radius);
@@ -135,7 +127,7 @@ a{color:inherit;text-decoration:none}
   min-height: 0; 
 }
 #view-explore.feed {
-  grid-template-rows: 56px 1fr; /* O Explorar não tem composer */
+  grid-template-rows: 56px 1fr; 
 }
 
 .feed-top{display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.06);background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);border-top-left-radius: var(--radius);border-top-right-radius: var(--radius); min-height: 56px;}
@@ -158,15 +150,14 @@ a{color:inherit;text-decoration:none}
 .comments{margin-top:8px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px;display:flex;flex-direction:column;gap:6px}
 
 /* Perfil */
-/* 👇 MUDANÇA: .profile agora usa a área 'content' (definida em .view-home) 👇 */
 .profile{
-  /* grid-area: content; */ /* Definido acima */
   background: var(--discord-dark);
   border:1px solid rgba(255,255,255,.06);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   display:grid;
-  grid-template-rows:56px 1fr
+  grid-template-rows:56px 1fr;
+  min-height: 0; /* Correção de scroll */
 }
 .profile-top{display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.06);background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);border-top-left-radius: var(--radius);border-top-right-radius: var(--radius); min-height: 56px;}
 .profile-body{overflow:auto;padding:14px;display:grid;grid-template-columns:300px 1fr;gap:14px}
@@ -207,29 +198,91 @@ a{color:inherit;text-decoration:none}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
 /* --- Aprimoramento: Nomes clicáveis no Feed --- */
-.post-username {
-  cursor: pointer;
-  transition: .2s;
-}
-.post-username:hover {
-  color: var(--orkut-blue);
-  text-decoration: underline;
-}
+.post-username { cursor: pointer; transition: .2s; }
+.post-username:hover { color: var(--orkut-blue); text-decoration: underline; }
 
 /* --- Aprimoramento: Userbar Clicável --- */
 .userbar .me.clickable {
   cursor: pointer;
   border-radius: 8px;
   transition: .2s background;
-  padding: 4px; /* Adiciona um respiro */
-  margin-left: -4px; /* Compensa o padding */
+  padding: 4px; 
+  margin-left: -4px; 
 }
-.userbar .me.clickable:hover {
-  background: rgba(255, 255, 255, .05);
+.userbar .me.clickable:hover { background: rgba(255, 255, 255, .05); }
+
+
+/* =============================================== */
+/* 👇 NOVOS ESTILOS "EXPLORAR SERVIDORES" AQUI 👇 */
+/* =============================================== */
+.explore-servers {
+  background: var(--discord-dark);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+.explore-servers-top {
+  padding: 14px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.explore-servers-top h2 {
+  font-size: 1.5rem;
+  margin-bottom: 4px;
+}
+.community-list {
+  overflow-y: auto;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+  align-content: start;
+}
+.community-card-explore {
+  background: var(--discord-panel);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  transition: .2s background;
+}
+.community-card-explore:hover {
+  background: rgba(255,255,255,.05);
+}
+.community-card-explore .emoji {
+  font-size: 32px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,.1);
+}
+.community-card-explore-info {
+  flex: 1;
+}
+.community-card-explore-info h3 {
+  font-size: 1.1rem;
+}
+.community-card-explore-info .meta {
+  font-size: 0.9rem;
+}
+.community-card-explore .join-btn {
+  background: var(--success);
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 
-/* Responsivo (Simplificado para os novos layouts) */
+/* Responsivo */
 @media (max-width: 1080px){
   .app.view-community { /* Layout de Chat */
     grid-template-columns:72px 1fr;

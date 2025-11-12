@@ -19,7 +19,7 @@ let activeChannel = "geral";
 let viewedUsername = currentUser; 
 
 // --- Referências do Chat ---
-const chatView = document.getElementById("view-chat"); // 👈 MUDANÇA
+const chatView = document.getElementById("view-chat"); 
 const chatMessagesEl = document.getElementById("messages");
 const chatTopicBadge = document.getElementById("topic");
 const chatInputEl = document.getElementById("composerInput");
@@ -27,20 +27,20 @@ const chatSendBtn = document.getElementById("sendBtn");
 const channelButtons = document.querySelectorAll(".channel[data-channel]");
 
 // --- Referências do Feed (Pessoal) ---
-const feedView = document.getElementById("view-feed"); // 👈 MUDANÇA
+const feedView = document.getElementById("view-feed"); 
 const postsEl = document.getElementById("posts");
 const feedInput = document.getElementById("feedInput");
 const feedSend = document.getElementById("feedSend");
 const feedRefreshBtn = document.getElementById("btn-refresh");
 
 // --- Referências do Feed (Explorar) ---
-const exploreView = document.getElementById("view-explore"); // 👈 MUDANÇA
+const exploreView = document.getElementById("view-explore"); 
 const explorePostsEl = document.getElementById("explore-posts");
 const btnExplore = document.getElementById("btn-explore");
 const btnExploreRefresh = document.getElementById("btn-explore-refresh");
 
 // --- Referências do Perfil ---
-const profileView = document.getElementById("view-profile"); // 👈 MUDANÇA
+const profileView = document.getElementById("view-profile"); 
 const profileAvatarEl = document.getElementById("profileAvatar");
 const profileNameEl = document.getElementById("profileName");
 const profileBioEl = document.getElementById("profileBio");
@@ -52,14 +52,28 @@ const testimonialsEl = document.getElementById("testimonials");
 const testimonialInput = document.getElementById("testimonialInput");
 const testimonialSend = document.getElementById("testimonialSend");
 
+// --- Referências de Comunidades (NOVO) ---
+const exploreServersView = document.getElementById("view-explore-servers");
+const exploreServersBtn = document.getElementById("explore-servers-btn");
+const communityListContainer = document.getElementById("community-list-container");
+
 // --- Referências de Visão (Views) ---
 const appEl = document.querySelector(".app");
-const mainHeader = document.querySelector(".header"); // 👈 NOVO
+const mainHeader = document.querySelector(".header"); 
 const channelsEl = document.querySelector(".channels");
-const viewTabs = document.querySelectorAll(".view-tabs .pill"); // Apanha só o "Feed"
-const serverBtns = document.querySelectorAll(".servers .server"); // 👈 NOVO
-const homeBtn = document.getElementById("home-btn"); // 👈 NOVO
-const communityBtns = document.querySelectorAll(".community-btn"); // 👈 NOVO
+const viewTabs = document.querySelectorAll(".view-tabs .pill"); 
+const serverBtns = document.querySelectorAll(".servers .server"); 
+const homeBtn = document.getElementById("home-btn"); 
+const communityBtns = document.querySelectorAll(".community-btn"); 
+
+// --- Objeto de Vistas (NOVO) ---
+const views = {
+  feed: feedView,
+  chat: chatView,
+  profile: profileView,
+  explore: exploreView,
+  "explore-servers": exploreServersView // Adicionada nova vista
+};
 
 // --- Conexão Socket.IO (Só para o Chat) ---
 const socket = io();
@@ -74,7 +88,7 @@ async function apiGetPosts() {
     const response = await fetch(`/api/posts?user=${encodeURIComponent(currentUser)}`);
     if (!response.ok) return;
     const data = await response.json();
-    renderPosts(data.posts || []); // Renderiza no feed pessoal
+    renderPosts(data.posts || []); 
   } catch (err) {
     console.error("Falha ao buscar posts:", err);
     postsEl.innerHTML = "<div class='meta'>Falha ao carregar posts.</div>";
@@ -403,16 +417,21 @@ userbarMeBtn.addEventListener("click", () => {
   activateView("profile"); 
 });
 
-// --- Eventos dos Servidores (NOVO) ---
+// --- Eventos dos Servidores ---
 homeBtn.addEventListener("click", () => {
-  activateView("feed"); // Clicar no "Home" leva-te ao Feed
+  activateView("feed"); 
 });
 
 communityBtns.forEach(btn => {
   btn.addEventListener("click", () => {
     const communityId = btn.dataset.communityId;
-    activateView("chat", { community: communityId }); // Passa o ID da comunidade
+    activateView("chat", { community: communityId }); 
   });
+});
+
+// --- Evento do Botão "+" (NOVO) ---
+exploreServersBtn.addEventListener("click", () => {
+  activateView("explore-servers");
 });
 
 
@@ -422,10 +441,7 @@ communityBtns.forEach(btn => {
 
 function activateView(name, options = {}) {
   // 1. Esconde todas as vistas principais
-  feedView.hidden = true;
-  chatView.hidden = true;
-  profileView.hidden = true;
-  exploreView.hidden = true;
+  Object.values(views).forEach(view => view.hidden = true);
   
   // 2. Remove classes de estado do app
   appEl.classList.remove("view-home", "view-community");
@@ -434,24 +450,27 @@ function activateView(name, options = {}) {
   serverBtns.forEach(b => b.classList.remove("active"));
   
   
-  // --- LÓGICA DE VISTA "HOME" (Feed, Explorar, Perfil) ---
-  if (name === "feed" || name === "explore" || name === "profile") {
+  // --- LÓGICA DE VISTA "HOME" (Feed, Explorar, Perfil, Explorar Servidores) ---
+  if (name === "feed" || name === "explore" || name === "profile" || name === "explore-servers") {
     
-    // 3. Define o layout
     appEl.classList.add("view-home");
     mainHeader.hidden = false;
     channelsEl.hidden = true;
     
     // 4. Mostra a vista correta
-    if (name === "feed") feedView.hidden = false;
-    if (name === "explore") exploreView.hidden = false;
-    if (name === "profile") profileView.hidden = false;
+    views[name].hidden = false;
     
     // 5. Atualiza botões
-    homeBtn.classList.add("active"); // O botão "A" é o ativo
+    if (name === 'explore-servers') {
+      exploreServersBtn.classList.add("active"); // Ativa o botão "+"
+    } else {
+      homeBtn.classList.add("active"); // O botão "A" é o ativo
+    }
+    
     viewTabs.forEach(b => b.classList.toggle("active", b.dataset.view === name));
     btnExplore.classList.toggle("active", name === "explore");
-    if (name === 'profile') { // Se for perfil, desativa abas
+    
+    if (name === 'profile' || name === 'explore-servers') { // Se for perfil ou explorar servidores
       viewTabs.forEach(b => b.classList.remove("active"));
       btnExplore.classList.remove("active");
     }
@@ -460,24 +479,20 @@ function activateView(name, options = {}) {
     if (name === "feed") apiGetPosts(); 
     if (name === "explore") apiGetExplorePosts();
     if (name === "profile") showDynamicProfile(viewedUsername); 
+    if (name === "explore-servers") apiGetExploreCommunities(); // 👈 NOVO
     
   } 
   // --- LÓGICA DE VISTA "COMUNIDADE" (Chat) ---
   else if (name === "chat") {
     
-    // 3. Define o layout
     appEl.classList.add("view-community");
-    mainHeader.hidden = true; // Esconde header principal
-    channelsEl.hidden = false; // Mostra canais
-    chatView.hidden = false;   // Mostra chat
+    mainHeader.hidden = true; 
+    channelsEl.hidden = false; 
+    chatView.hidden = false;   
     
-    // 5. Atualiza botões
-    // Ativa o botão de servidor correto
     const activeCommunityBtn = document.querySelector(`.community-btn[data-community-id="${options.community}"]`);
     if (activeCommunityBtn) activeCommunityBtn.classList.add("active");
     
-    // 6. Carrega dados
-    // (No futuro, podemos usar o options.community para carregar canais diferentes)
     renderChannel("geral"); 
   }
 }
@@ -548,6 +563,47 @@ async function apiUnfollow(username) {
   }
 }
 
+// ===================================================
+// 7. LÓGICA DE EXPLORAR COMUNIDADES (NOVO)
+// ===================================================
+
+async function apiGetExploreCommunities() {
+  try {
+    const res = await fetch('/api/communities/explore');
+    if (!res.ok) return;
+    const data = await res.json();
+    renderExploreCommunities(data.communities || []);
+  } catch (err) {
+    console.error("Erro ao buscar comunidades:", err);
+    communityListContainer.innerHTML = "<div class='meta'>Falha ao carregar comunidades.</div>";
+  }
+}
+
+function renderExploreCommunities(communities) {
+  if (!communityListContainer) return;
+  communityListContainer.innerHTML = ""; // Limpa a lista
+
+  if (communities.length === 0) {
+    communityListContainer.innerHTML = "<div class='meta'>Nenhuma comunidade pública encontrada.</div>";
+    return;
+  }
+
+  communities.forEach(community => {
+    const node = document.createElement("div");
+    node.className = "community-card-explore";
+    node.innerHTML = `
+      <div class="emoji">${escapeHtml(community.emoji)}</div>
+      <div class="community-card-explore-info">
+        <h3>${escapeHtml(community.name)}</h3>
+        <div class="meta">${escapeHtml(community.description)}</div>
+      </div>
+      <button class="join-btn" data-community-id="${community.id}">Entrar</button>
+    `;
+    communityListContainer.appendChild(node);
+  });
+}
+
+
 // --- Segurança ---
 function escapeHtml(s) {
   if (!s) return "";
@@ -561,5 +617,5 @@ socket.on('connect', () => {
   console.log('Socket conectado:', socket.id);
   document.getElementById("userName").textContent = currentUser;
   document.getElementById("userAvatar").textContent = currentUser.slice(0, 2).toUpperCase();
-  activateView("feed"); // Começa o aplicativo na vista "feed"
+  activateView("feed"); 
 });
