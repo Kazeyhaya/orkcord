@@ -17,7 +17,7 @@ document.getElementById("userAvatar").textContent = userInitial;
 
 // --- Estado da UI ---
 let activeChannel = "geral"; // Canal de chat padrão
-let viewedUsername = currentUser; // 👈 NOVO: Guarda quem estamos a ver no perfil
+let viewedUsername = currentUser; // Guarda quem estamos a ver no perfil
 
 // --- Referências do Chat ---
 const chatMessagesEl = document.getElementById("messages");
@@ -93,8 +93,6 @@ async function apiCreatePost() {
 }
 
 async function apiLikePost(postId) {
-  // Esta função está ok, mas podemos melhorá-la no futuro
-  // para não ter que recarregar todos os posts (apiGetPosts())
   try {
     await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
     apiGetPosts(); 
@@ -126,8 +124,6 @@ function renderPosts(posts) {
     node.className = "post";
     const postUserInitial = (post.user || "?").slice(0, 2).toUpperCase();
     const postTime = new Date(post.timestamp).toLocaleString('pt-BR');
-
-    // Não estamos a guardar os likes, então resetamos a "memória"
     const isLiked = post.likes > 0; // Simplificado
 
     node.innerHTML = `
@@ -194,9 +190,8 @@ function renderComments(postId, comments) {
 }
 
 // --- Funções da API do Perfil ---
-async function apiGetProfile(username) { // 👈 MUDANÇA: Recebe username
+async function apiGetProfile(username) { 
   try {
-    // Usa o username para buscar o perfil
     const res = await fetch(`/api/profile/${encodeURIComponent(username)}`);
     if (!res.ok) return;
     const data = await res.json();
@@ -214,7 +209,7 @@ async function apiUpdateBio() {
     const res = await fetch('/api/profile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user: currentUser, bio: newBio.trim() }) // Envia sempre o currentUser
+      body: JSON.stringify({ user: currentUser, bio: newBio.trim() })
     });
     if (!res.ok) return;
     const data = await res.json();
@@ -225,7 +220,7 @@ async function apiUpdateBio() {
 }
 
 // --- Funções da API de Depoimentos ---
-async function apiGetTestimonials(username) { // 👈 MUDANÇA: Recebe username
+async function apiGetTestimonials(username) { 
   try {
     const res = await fetch(`/api/testimonials/${encodeURIComponent(username)}`);
     if (!res.ok) return;
@@ -247,12 +242,12 @@ async function apiCreateTestimonial() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from_user: currentUser, 
-        to_user: viewedUsername, // 👈 MUDANÇA: Envia para o perfil que estás a ver
+        to_user: viewedUsername, 
         text: text
       })
     });
     testimonialInput.value = ""; 
-    apiGetTestimonials(viewedUsername); // Recarrega os depoimentos do perfil atual
+    apiGetTestimonials(viewedUsername); 
   } catch (err) {
     console.error("Falha ao salvar depoimento:", err);
   }
@@ -270,7 +265,7 @@ function renderTestimonials(testimonials) {
   testimonialsEl.innerHTML = ""; // Limpa a lista
   testimonials.forEach(item => {
     const node = document.createElement("div");
-    node.className = "meta"; // Reutiliza o estilo 'meta'
+    node.className = "meta"; 
     node.innerHTML = `<strong>${escapeHtml(item.from_user)}</strong>: ${escapeHtml(item.text)}`;
     testimonialsEl.appendChild(node);
   });
@@ -345,28 +340,19 @@ channelButtons.forEach(c => c.addEventListener("click", () => renderChannel(c.ge
 // --- Eventos do Feed (Likes, Comentários e Ver Perfil) ---
 postsEl.addEventListener("click", (e) => {
   // --- Lógica de ver Perfil ---
-  // 👇 NOVO: Verifica se o clique foi no nome de um utilizador
   const userLink = e.target.closest('.post-username[data-username]');
   if (userLink) {
-    viewedUsername = userLink.dataset.username; // Define o perfil a ser visto
-    activateView("profile"); // Ativa a vista do perfil
-    return; // Para a execução
+    viewedUsername = userLink.dataset.username; 
+    activateView("profile"); 
+    return;
   }
-
   // --- Lógica de Like ---
   const likeButton = e.target.closest('[data-like]');
   if (likeButton) {
     const postId = likeButton.dataset.like; 
-    // Simplificado: A API trata o like/unlike
     apiLikePost(postId); 
-    // if (likeButton.classList.contains('liked')) {
-    //   apiUnlikePost(postId);
-    // } else {
-    //   apiLikePost(postId);
-    // }
     return;
   }
-
   // --- Lógica de Comentário ---
   const commentButton = e.target.closest('[data-comment]');
   if (commentButton) {
@@ -383,9 +369,6 @@ postsEl.addEventListener("click", (e) => {
 feedSend.addEventListener("click", apiCreatePost);
 feedRefreshBtn.addEventListener("click", apiGetPosts);
 
-// --- Evento do Perfil (Botão de Bio) ---
-// O evento foi movido para a função showDynamicProfile
-
 // --- Evento de Depoimento ---
 testimonialSend.addEventListener("click", apiCreateTestimonial);
 
@@ -393,7 +376,6 @@ testimonialSend.addEventListener("click", apiCreateTestimonial);
 viewTabs.forEach(b => b.addEventListener("click", () => {
   const viewName = b.dataset.view;
   if (viewName === 'profile') {
-    // 👇 MUDANÇA: Clicar na aba "Perfil" mostra sempre o *teu* perfil
     viewedUsername = currentUser; 
     activateView("profile");
   } else {
@@ -407,17 +389,11 @@ viewTabs.forEach(b => b.addEventListener("click", () => {
 // ===================================================
 
 function activateView(name) {
-  // 1. Esconde todas as seções
   Object.values(views).forEach(view => view.hidden = true);
-  // 2. Mostra a seção correta
   if (views[name]) {
     views[name].hidden = false;
   }
-  
-  // 3. Atualiza os botões (tabs)
   viewTabs.forEach(b => b.classList.toggle("active", b.dataset.view === name));
-
-  // 4. Ajusta o layout do grid
   appEl.classList.remove("view-feed", "view-chat", "view-profile");
   appEl.classList.add(`view-${name}`);
 
@@ -435,16 +411,15 @@ function activateView(name) {
     apiGetPosts(); 
   }
   if (name === "profile") {
-    // 👇 MUDANÇA: Chama a nova função dinâmica
     showDynamicProfile(viewedUsername); 
   }
 }
 
 // ===================================================
-// 6. LÓGICA DE PERFIL DINÂMICO (NOVO!)
+// 6. LÓGICA DE PERFIL DINÂMICO E SEGUIR (MUDANÇAS!)
 // ===================================================
 
-function showDynamicProfile(username) {
+async function showDynamicProfile(username) {
   if (!username) return;
 
   // 1. Carrega os dados do utilizador (bio e depoimentos)
@@ -454,17 +429,71 @@ function showDynamicProfile(username) {
   // 2. Atualiza a UI do Perfil imediatamente
   profileNameEl.textContent = username;
   profileAvatarEl.textContent = username.slice(0, 2).toUpperCase();
-
+  
   // 3. Decide qual botão mostrar (Editar vs. Seguir)
+  editBioBtn.disabled = true; // Desativa botão enquanto verifica
+  
   if (username === currentUser) {
     editBioBtn.textContent = "Editar bio";
     editBioBtn.onclick = apiUpdateBio; // Liga à função de editar
+    editBioBtn.disabled = false;
   } else {
-    // ESTE É O NOSSO PRÓXIMO PASSO (Passo 2 do plano)
-    editBioBtn.textContent = "Seguir"; // 👈 MUDANÇA
-    editBioBtn.onclick = () => { 
-      alert(`FUNCIONALIDADE 'SEGUIR' AINDA NÃO IMPLEMENTADA.\nIrias seguir ${username}.`); 
-    };
+    // 👇 MUDANÇA: Verifica se já segue o utilizador
+    try {
+      const res = await fetch(`/api/isfollowing/${encodeURIComponent(username)}?follower=${encodeURIComponent(currentUser)}`);
+      const data = await res.json();
+      
+      if (data.isFollowing) {
+        editBioBtn.textContent = "Deixar de Seguir";
+        editBioBtn.onclick = () => apiUnfollow(username);
+      } else {
+        editBioBtn.textContent = "Seguir"; 
+        editBioBtn.onclick = () => apiFollow(username);
+      }
+      editBioBtn.disabled = false; // Ativa o botão
+      
+    } catch (err) {
+      console.error("Erro ao verificar 'follow':", err);
+      editBioBtn.textContent = "Erro";
+    }
+  }
+}
+
+// 👇 NOVA FUNÇÃO: Seguir
+async function apiFollow(username) {
+  editBioBtn.disabled = true;
+  try {
+    await fetch('/api/follow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ follower: currentUser, following: username })
+    });
+    // Atualiza o botão
+    editBioBtn.textContent = "Deixar de Seguir";
+    editBioBtn.onclick = () => apiUnfollow(username);
+    editBioBtn.disabled = false;
+  } catch (err) {
+    console.error("Erro ao seguir:", err);
+    editBioBtn.disabled = false;
+  }
+}
+
+// 👇 NOVA FUNÇÃO: Deixar de Seguir
+async function apiUnfollow(username) {
+  editBioBtn.disabled = true;
+  try {
+    await fetch('/api/unfollow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ follower: currentUser, following: username })
+    });
+    // Atualiza o botão
+    editBioBtn.textContent = "Seguir";
+    editBioBtn.onclick = () => apiFollow(username);
+    editBioBtn.disabled = false;
+  } catch (err) {
+    console.error("Erro ao deixar de seguir:", err);
+    editBioBtn.disabled = false;
   }
 }
 

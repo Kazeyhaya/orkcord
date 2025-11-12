@@ -69,9 +69,7 @@ async function setupDatabase() {
       )
     `);
     
-    // ===============================================
-    // 👇 NOVA TABELA DE COMENTÁRIOS ADICIONADA AQUI 👇
-    // ===============================================
+    // Tabela de Comentários
     await client.query(`
       CREATE TABLE IF NOT EXISTS comments (
         id SERIAL PRIMARY KEY,
@@ -81,8 +79,21 @@ async function setupDatabase() {
         timestamp TIMESTAMPTZ DEFAULT NOW()
       )
     `);
+
+    // ===============================================
+    // 👇 NOVA TABELA 'FOLLOWS' ADICIONADA AQUI 👇
+    // ===============================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS follows (
+        id SERIAL PRIMARY KEY,
+        follower_user TEXT NOT NULL, -- Quem segue
+        following_user TEXT NOT NULL, -- Quem está a ser seguido
+        timestamp TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(follower_user, following_user) -- Impede seguir a mesma pessoa duas vezes
+      )
+    `);
     
-    console.log('Tabelas "messages", "posts", "profiles", "testimonials" e "comments" verificadas/criadas.');
+    console.log('Tabelas (incluindo "follows") verificadas/criadas.');
 
   } catch (err) {
     console.error('Erro ao criar tabelas:', err);
@@ -105,6 +116,8 @@ app.get('/', (req, res) => {
 // [GET] Rota para LER todos os posts do Feed
 app.get('/api/posts', async (req, res) => {
   try {
+    // POR ENQUANTO, esta rota ainda mostra TODOS os posts.
+    // Vamos alterá-la no Passo 4.
     const result = await pool.query(
       `SELECT * FROM posts ORDER BY timestamp DESC LIMIT 30`
     );
@@ -163,12 +176,12 @@ app.post('/api/posts/:id/unlike', async (req, res) => {
       return res.status(404).json({ error: 'Post não encontrado' });
     }
     res.status(200).json(result.rows[0]); 
-  } catch (err) {
+  } catch (err)
+ {
     console.error('Erro ao descurtir:', err);
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
-
 
 // --- API (Parte "Perfil") ---
 app.get('/api/profile/:username', async (req, res) => {
@@ -242,12 +255,7 @@ app.post('/api/testimonials', async (req, res) => {
   }
 });
 
-
-// ===============================================
-// 👇 NOVAS ROTAS DE COMENTÁRIOS ADICIONADAS AQUI 👇
-// ===============================================
-
-// [GET] Rota para LER os comentários de um post
+// --- API (Parte "Comentários") ---
 app.get('/api/posts/:id/comments', async (req, res) => {
   try {
     const { id } = req.params; // ID do post
@@ -261,8 +269,6 @@ app.get('/api/posts/:id/comments', async (req, res) => {
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
-
-// [POST] Rota para ADICIONAR um comentário
 app.post('/api/posts/:id/comments', async (req, res) => {
   try {
     const { id } = req.params; // ID do post
@@ -279,6 +285,69 @@ app.post('/api/posts/:id/comments', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('Erro ao salvar comentário:', err);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// ===============================================
+// 👇 NOVAS ROTAS DE "SEGUIR" (FOLLOW) AQUI 👇
+// ===============================================
+
+// [GET] Verifica se o utilizador X segue o utilizador Y
+app.get('/api/isfollowing/:username', async (req, res) => {
+  // :username é o *perfil que estamos a ver* (following_user)
+  // O utilizador logado (follower_user) vem no body
+  const { follower } = req.query; // ex: /api/isfollowing/chico?follower=Alexandre
+  const { username } = req.params;
+
+  if (!follower || !username) {
+    return res.status(400).json({ error: 'Faltam parâmetros' });
+  }
+  
+  try {
+    const result = await pool.query(
+      `SELECT 1 FROM follows WHERE follower_user = $1 AND following_user = $2`,
+      [follower, username]
+    );
+    res.json({ isFollowing: result.rows.length > 0 });
+  } catch (err) {
+    console.error('Erro ao verificar se segue:', err);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// [POST] Seguir um utilizador
+app.post('/api/follow', async (req, res) => {
+  const { follower, following } = req.body; // { follower: "Alexandre", following: "chico" }
+  if (!follower || !following) {
+    return res.status(400).json({ error: 'Faltam parâmetros' });
+  }
+  try {
+    await pool.query(
+      `INSERT INTO follows (follower_user, following_user) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [follower, following]
+    );
+    res.status(201).json({ message: 'Seguido com sucesso' });
+  } catch (err) {
+    console.error('Erro ao seguir:', err);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// [POST] Deixar de seguir um utilizador
+app.post('/api/unfollow', async (req, res) => {
+  const { follower, following } = req.body;
+  if (!follower || !following) {
+    return res.status(400).json({ error: 'Faltam parâmetros' });
+  }
+  try {
+    await pool.query(
+      `DELETE FROM follows WHERE follower_user = $1 AND following_user = $2`,
+      [follower, following]
+    );
+    res.status(200).json({ message: 'Deixou de seguir com sucesso' });
+  } catch (err) {
+    console.error('Erro ao deixar de seguir:', err);
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
