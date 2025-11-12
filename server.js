@@ -12,6 +12,13 @@ const port = process.env.PORT || 3000;
 // Habilita o JSON para a API
 app.use(express.json());
 
+// ===============================================
+// 👇 LINHA NOVA PARA SERVIR A PASTA ASSETS 👇
+// ===============================================
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+// ===============================================
+
+
 // --- Configuração do Banco de Dados PostgreSQL ---
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -54,9 +61,20 @@ async function setupDatabase() {
       )
     `);
     
-    console.log('Tabelas "messages", "posts" e "profiles" verificadas/criadas.');
+    // NOVA Tabela de Depoimentos (Testimonials)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS testimonials (
+        id SERIAL PRIMARY KEY,
+        "from_user" TEXT NOT NULL,
+        "to_user" TEXT NOT NULL,
+        text TEXT NOT NULL,
+        timestamp TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    
+    console.log('Tabelas "messages", "posts", "profiles" e "testimonials" verificadas/criadas.');
 
-  } catch (err) { // <-- AQUI ESTAVA O ERRO ANTIGO
+  } catch (err) {
     console.error('Erro ao criar tabelas:', err);
   } finally {
     client.release();
@@ -73,8 +91,6 @@ app.get('/', (req, res) => {
 });
 
 // --- API (Parte "Feed") ---
-
-// [GET] Rota para LER todos os posts do Feed
 app.get('/api/posts', async (req, res) => {
   try {
     const result = await pool.query(
@@ -87,7 +103,6 @@ app.get('/api/posts', async (req, res) => {
   }
 });
 
-// [POST] Rota para CRIAR um novo post no Feed
 app.post('/api/posts', async (req, res) => {
   const { user, text } = req.body;
   if (!user || !text) {
@@ -95,7 +110,7 @@ app.post('/api/posts', async (req, res) => {
   }
   try {
     const result = await pool.query(
-      `INSERT INTO posts ("user", text, timestamp) VALUES ($1, 2, NOW()) RETURNING *`,
+      `INSERT INTO posts ("user", text, timestamp) VALUES ($1, $2, NOW()) RETURNING *`,
       [user, text]
     );
     res.status(201).json(result.rows[0]);
@@ -106,8 +121,6 @@ app.post('/api/posts', async (req, res) => {
 });
 
 // --- API (Parte "Perfil") ---
-
-// [GET] Rota para LER o perfil (a bio) de um usuário
 app.get('/api/profile/:username', async (req, res) => {
   try {
     const { username } = req.params;
@@ -126,7 +139,6 @@ app.get('/api/profile/:username', async (req, res) => {
   }
 });
 
-// [POST] Rota para CRIAR ou ATUALIZAR a bio
 app.post('/api/profile', async (req, res) => {
   const { user, bio } = req.body;
   if (!user || bio === undefined) {
@@ -144,6 +156,38 @@ app.post('/api/profile', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('Erro ao atualizar bio:', err);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// --- API (Parte "Depoimentos") ---
+app.get('/api/testimonials/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const result = await pool.query(
+      `SELECT * FROM testimonials WHERE "to_user" = $1 ORDER BY timestamp DESC LIMIT 30`,
+      [username]
+    );
+    res.json({ testimonials: result.rows });
+  } catch (err) {
+    console.error('Erro ao buscar depoimentos:', err);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+app.post('/api/testimonials', async (req, res) => {
+  const { from_user, to_user, text } = req.body; 
+  if (!from_user || !to_user || !text) {
+    return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
+  }
+  try {
+    const result = await pool.query(
+      `INSERT INTO testimonials ("from_user", "to_user", text, timestamp) VALUES ($1, $2, $3, NOW()) RETURNING *`,
+      [from_user, to_user, text]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Erro ao salvar depoimento:', err);
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
