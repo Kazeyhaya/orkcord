@@ -88,17 +88,17 @@ a{color:inherit;text-decoration:none}
 }
 .app.view-feed {
   grid-template-columns: 80px 1fr;
-  grid-template-rows: 64px 1fr 64px; /* <-- CORREÇÃO DA USERBAR */
+  grid-template-rows: 64px 1fr 64px;
   grid-template-areas: "servers header" "servers chat" "servers userbar";
 }
 .app.view-profile {
   grid-template-columns: 80px 1fr;
-  grid-template-rows: 64px 1fr 64px; /* <-- CORREÇÃO DA USERBAR */
+  grid-template-rows: 64px 1fr 64px;
   grid-template-areas: "servers header" "servers chat" "servers userbar";
 }
 .app.view-chat {
   grid-template-columns: 80px 280px 1fr;
-  grid-template-rows: 64px 1fr 64px; /* <-- Layout Padrão com userbar */
+  grid-template-rows: 64px 1fr 64px;
   grid-template-areas: "servers header header" "servers channels chat" "servers userbar chat";
 }
 
@@ -115,7 +115,7 @@ a{color:inherit;text-decoration:none}
   display:flex;
   flex-direction:column;
   gap:12px;
-  min-height: 0; /* <-- CORREÇÃO DO SCROLL DO FEED */
+  min-height: 0; /* <-- ❗️ CORREÇÃO DO SCROLL DO FEED ESTÁ AQUI */
 }
 .post{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;display:grid;grid-template-columns:44px 1fr;gap:10px}
 .post .meta{margin:0 0 6px 0}
@@ -144,7 +144,7 @@ a{color:inherit;text-decoration:none}
   display:flex;
   flex-direction:column;
   gap:12px;
-  min-height: 0; /* <-- CORREÇÃO DO SCROLL DO CHAT */
+  min-height: 0; /* <-- ❗️ CORREÇÃO DO SCROLL DO CHAT ESTÁ AQUI */
 }
 .msg{display:grid;grid-template-columns: 44px 1fr;gap:10px;align-items:start;animation:fadeIn .3s ease}
 .avatar{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background: linear-gradient(135deg, var(--orkut-blue), var(--orkut-pink));font-weight:800}

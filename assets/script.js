@@ -198,34 +198,6 @@ function renderComments(postId, comments) {
   }).join(""); 
 }
 
-// --- Eventos do Feed (Likes e Comentários) ---
-postsEl.addEventListener("click", (e) => {
-  // --- Lógica de Like ---
-  const likeButton = e.target.closest('[data-like]');
-  if (likeButton) {
-    const postId = likeButton.dataset.like; 
-    if (likeButton.classList.contains('liked')) {
-      apiUnlikePost(postId);
-    } else {
-      apiLikePost(postId);
-    }
-    return; // Para a execução
-  }
-
-  // --- Lógica de Comentário ---
-  const commentButton = e.target.closest('[data-comment]');
-  if (commentButton) {
-    const postId = commentButton.dataset.comment;
-    const text = prompt("Digite seu comentário:"); 
-    
-    if (text && text.trim()) {
-      apiCreateComment(postId, text.trim());
-    }
-    return; // Para a execução
-  }
-});
-
-
 // --- Funções da API do Perfil ---
 async function apiGetProfile() {
   try {
@@ -255,10 +227,6 @@ async function apiUpdateBio() {
     console.error("Falha ao salvar bio:", err);
   }
 }
-
-// --- Evento do Perfil ---
-editBioBtn.addEventListener("click", apiUpdateBio);
-
 
 // --- Funções da API de Depoimentos ---
 async function apiGetTestimonials() {
@@ -311,10 +279,6 @@ function renderTestimonials(testimonials) {
     testimonialsEl.appendChild(node);
   });
 }
-
-// --- Evento de Depoimento ---
-testimonialSend.addEventListener("click", apiCreateTestimonial);
-
 
 // ===================================================
 // 3. LÓGICA DO CHAT (Socket.IO / "Agora")
@@ -377,27 +341,60 @@ function sendChatMessage() {
   chatInputEl.focus();
 }
 
+// ===================================================
+// 4. EVENTOS (Conexões dos Botões)
+// ===================================================
+
 // --- Eventos do Chat (Socket.IO) ---
 chatSendBtn.addEventListener("click", sendChatMessage);
 chatInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") sendChatMessage(); });
 channelButtons.forEach(c => c.addEventListener("click", () => renderChannel(c.getAttribute("data-channel"))));
 
-// --- Ouvintes do Socket.IO (Backend -> Frontend) ---
-socket.on('loadHistory', (messages) => {
-  chatMessagesEl.innerHTML = ""; 
-  messages.forEach(addMessageBubble);
-  // QUANDO O HISTÓRICO CARREGA, SEMPRE VAI PARA O FINAL
-  chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight; 
-});
+// --- Eventos do Feed (Likes e Comentários) ---
+postsEl.addEventListener("click", (e) => {
+  // --- Lógica de Like ---
+  const likeButton = e.target.closest('[data-like]');
+  if (likeButton) {
+    const postId = likeButton.dataset.like; 
+    if (likeButton.classList.contains('liked')) {
+      apiUnlikePost(postId);
+    } else {
+      apiLikePost(postId);
+    }
+    return; // Para a execução
+  }
 
-socket.on('newMessage', (data) => {
-  if (data.channel === activeChannel) { 
-     addMessageBubble(data); // A função addMessageBubble agora tem a lógica de scroll
+  // --- Lógica de Comentário ---
+  const commentButton = e.target.closest('[data-comment]');
+  if (commentButton) {
+    const postId = commentButton.dataset.comment;
+    const text = prompt("Digite seu comentário:"); 
+    
+    if (text && text.trim()) {
+      apiCreateComment(postId, text.trim());
+    }
+    return; // Para a execução
   }
 });
 
+// --- Eventos dos Botões do Feed (Publicar e Refresh) ---
+// 👇 ESTA É A CORREÇÃO PRINCIPAL 👇
+feedSend.addEventListener("click", apiCreatePost);
+feedRefreshBtn.addEventListener("click", apiGetPosts);
+
+
+// --- Evento do Perfil ---
+editBioBtn.addEventListener("click", apiUpdateBio);
+
+// --- Evento de Depoimento ---
+testimonialSend.addEventListener("click", apiCreateTestimonial);
+
+// --- Eventos das Abas ---
+viewTabs.forEach(b => b.addEventListener("click", () => activateView(b.dataset.view)));
+
+
 // ===================================================
-// 4. LÓGICA DE TROCA DE VISÃO (Views)
+// 5. LÓGICA DE TROCA DE VISÃO (Views) E INICIALIZAÇÃO
 // ===================================================
 
 function activateView(name) {
@@ -435,13 +432,6 @@ function activateView(name) {
     apiGetTestimonials(); // Carrega os depoimentos
   }
 }
-
-// --- Eventos das Abas ---
-viewTabs.forEach(b => b.addEventListener("click", () => activateView(b.dataset.view)));
-
-// ===================================================
-// 5. INICIALIZAÇÃO E UTILITÁRIOS
-// ===================================================
 
 // --- Segurança ---
 function escapeHtml(s) {
