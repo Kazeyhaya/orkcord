@@ -31,7 +31,7 @@ const feedInput = document.getElementById("feedInput");
 const feedSend = document.getElementById("feedSend");
 const feedRefreshBtn = document.getElementById("btn-refresh");
 
-// --- Referências do Feed (Explorar) --- (NOVO)
+// --- Referências do Feed (Explorar) ---
 const explorePostsEl = document.getElementById("explore-posts");
 const btnExplore = document.getElementById("btn-explore");
 const btnExploreRefresh = document.getElementById("btn-explore-refresh");
@@ -41,6 +41,7 @@ const profileAvatarEl = document.getElementById("profileAvatar");
 const profileNameEl = document.getElementById("profileName");
 const profileBioEl = document.getElementById("profileBio");
 const editBioBtn = document.getElementById("editBioBtn");
+const userbarMeBtn = document.getElementById("userbar-me"); // 👈 NOVO
 
 // --- Referências dos Depoimentos ---
 const testimonialsEl = document.getElementById("testimonials");
@@ -50,12 +51,13 @@ const testimonialSend = document.getElementById("testimonialSend");
 // --- Referências de Visão (Views) ---
 const appEl = document.querySelector(".app");
 const channelsEl = document.querySelector(".channels");
-const viewTabs = document.querySelectorAll(".view-tabs .pill");
+// O botão "Perfil" já não existe, este querySelector está correto
+const viewTabs = document.querySelectorAll(".view-tabs .pill"); 
 const views = {
   feed: document.getElementById("view-feed"),
   chat: document.getElementById("view-chat"),
   profile: document.getElementById("view-profile"),
-  explore: document.getElementById("view-explore") // 👈 NOVO
+  explore: document.getElementById("view-explore") 
 };
 
 // --- Conexão Socket.IO (Só para o Chat) ---
@@ -78,7 +80,7 @@ async function apiGetPosts() {
   }
 }
 
-// --- Funções da API do Feed (Explorar) --- (NOVO)
+// --- Funções da API do Feed (Explorar) ---
 async function apiGetExplorePosts() {
   try {
     const response = await fetch('/api/posts/explore'); // Chama a nova rota
@@ -92,7 +94,6 @@ async function apiGetExplorePosts() {
 }
 
 async function apiCreatePost() {
-  // ... (sem mudanças)
   const text = feedInput.value.trim();
   if (!text) return;
   feedSend.disabled = true;
@@ -111,7 +112,6 @@ async function apiCreatePost() {
 }
 
 async function apiLikePost(postId) {
-  // ... (sem mudanças)
   try {
     await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
     // Atualiza ambos os feeds se estiverem ativos
@@ -129,25 +129,22 @@ function renderPosts(posts) {
     postsEl.innerHTML = "<div class='meta' style='padding: 12px;'>O seu feed está vazio. Siga alguém (ou poste algo) para ver aqui!</div>";
     return;
   }
-  // Chama a função de renderização genérica
   renderPostList(postsEl, posts);
 }
 
-// --- Renderização do Feed (Explorar) --- (NOVO)
+// --- Renderização do Feed (Explorar) ---
 function renderExplorePosts(posts) {
   if (!explorePostsEl) return;
   if (posts.length === 0) {
     explorePostsEl.innerHTML = "<div class='meta' style='padding: 12px;'>Ainda não há posts na rede.</div>";
     return;
   }
-  // Chama a função de renderização genérica
   renderPostList(explorePostsEl, posts);
 }
 
-// --- Renderização Genérica (NOVO) ---
-// (Reutiliza a lógica de renderização para ambos os feeds)
+// --- Renderização Genérica ---
 function renderPostList(containerElement, posts) {
-  containerElement.innerHTML = ""; // Limpa o container
+  containerElement.innerHTML = ""; 
   posts.forEach(post => {
     const node = document.createElement("div");
     node.className = "post";
@@ -176,14 +173,12 @@ function renderPostList(containerElement, posts) {
       </div>`;
     containerElement.appendChild(node);
     
-    // A API de comentários não muda
     apiGetComments(post.id);
   });
 }
 
 
 // --- Funções da API de Comentários ---
-// ... (sem mudanças)
 async function apiGetComments(postId) {
   try {
     const res = await fetch(`/api/posts/${postId}/comments`);
@@ -219,13 +214,6 @@ function renderComments(postId, comments) {
 }
 
 // --- Funções da API do Perfil ---
-// ... (sem mudanças)
-async function apiGetProfile(username) { /* ... */ } 
-async function apiUpdateBio() { /* ... */ }
-async function apiGetTestimonials(username) { /* ... */ }
-async function apiCreateTestimonial() { /* ... */ }
-function renderTestimonials(testimonials) { /* ... */ }
-// (Vou omitir o código completo destas funções para ser breve, copie-as da sua versão anterior)
 async function apiGetProfile(username) { 
   try {
     const res = await fetch(`/api/profile/${encodeURIComponent(username)}`);
@@ -289,7 +277,7 @@ function renderTestimonials(testimonials) {
     testimonialsEl.innerHTML = "<div class='meta'>Seja o primeiro a deixar um depoimento!</div>";
     return;
   }
-  testimonialsEl.innerHTML = ""; // Limpa a lista
+  testimonialsEl.innerHTML = ""; 
   testimonials.forEach(item => {
     const node = document.createElement("div");
     node.className = "meta"; 
@@ -302,13 +290,6 @@ function renderTestimonials(testimonials) {
 // 3. LÓGICA DO CHAT (Socket.IO / "Agora")
 // ===================================================
 
-// ... (sem mudanças)
-function renderChannel(name) { /* ... */ }
-function addMessageBubble({ user, timestamp, message }) { /* ... */ }
-function sendChatMessage() { /* ... */ }
-socket.on('loadHistory', (messages) => { /* ... */ });
-socket.on('newMessage', (data) => { /* ... */ });
-// (Vou omitir o código completo destas funções para ser breve, copie-as da sua versão anterior)
 function renderChannel(name) {
   activeChannel = name; 
   chatMessagesEl.innerHTML = ""; 
@@ -372,7 +353,6 @@ chatInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat
 channelButtons.forEach(c => c.addEventListener("click", () => renderChannel(c.getAttribute("data-channel"))));
 
 // --- Eventos do Feed (Likes, Comentários e Ver Perfil) ---
-// Modificado para funcionar em AMBOS os feeds
 function handlePostClick(e) {
   const userLink = e.target.closest('.post-username[data-username]');
   if (userLink) {
@@ -397,13 +377,13 @@ function handlePostClick(e) {
   }
 }
 postsEl.addEventListener("click", handlePostClick);
-explorePostsEl.addEventListener("click", handlePostClick); // 👈 NOVO: Mesma lógica no feed explorar
+explorePostsEl.addEventListener("click", handlePostClick); 
 
 
 // --- Eventos dos Botões do Feed (Publicar e Refresh) ---
 feedSend.addEventListener("click", apiCreatePost);
 feedRefreshBtn.addEventListener("click", apiGetPosts);
-btnExploreRefresh.addEventListener("click", apiGetExplorePosts); // 👈 NOVO
+btnExploreRefresh.addEventListener("click", apiGetExplorePosts); 
 
 // --- Evento de Depoimento ---
 testimonialSend.addEventListener("click", apiCreateTestimonial);
@@ -411,14 +391,17 @@ testimonialSend.addEventListener("click", apiCreateTestimonial);
 // --- Eventos das Abas ---
 viewTabs.forEach(b => b.addEventListener("click", () => {
   const viewName = b.dataset.view;
-  if (viewName === 'profile') {
-    viewedUsername = currentUser; 
-  }
   activateView(viewName);
 }));
 
-// --- Evento do Botão Explorar --- (NOVO)
+// --- Evento do Botão Explorar --- 
 btnExplore.addEventListener("click", () => activateView("explore"));
+
+// --- Evento da Userbar (Novo Perfil) --- (NOVO)
+userbarMeBtn.addEventListener("click", () => {
+  viewedUsername = currentUser; // Define que queremos ver o nosso próprio perfil
+  activateView("profile"); // Ativa a vista do perfil
+});
 
 
 // ===================================================
@@ -434,18 +417,27 @@ function activateView(name) {
   }
   
   // 3. Atualiza os botões (tabs)
-  // Se estamos no "explorar", nenhuma aba principal fica ativa
   if (name === 'explore') {
     viewTabs.forEach(b => b.classList.remove("active"));
-    btnExplore.classList.add("active"); // Ativa o botão explorar
+    btnExplore.classList.add("active"); 
+  } else if (name === 'profile') {
+    // 👇 MUDANÇA: Se estamos no perfil, nenhuma aba principal fica ativa
+    viewTabs.forEach(b => b.classList.remove("active"));
+    btnExplore.classList.remove("active");
   } else {
+    // Ativa a aba "Feed" ou "Chat"
     viewTabs.forEach(b => b.classList.toggle("active", b.dataset.view === name));
-    btnExplore.classList.remove("active"); // Garante que o explorar não está ativo
+    btnExplore.classList.remove("active"); 
   }
 
   // 4. Ajusta o layout do grid
   appEl.classList.remove("view-feed", "view-chat", "view-profile", "view-explore");
-  appEl.classList.add(`view-${name}`); // (view-explore funciona como view-feed no CSS)
+  // O layout do "profile" e "explore" é o mesmo do "feed"
+  if (name === 'profile' || name === 'explore') {
+    appEl.classList.add('view-feed'); 
+  } else {
+    appEl.classList.add(`view-${name}`); 
+  }
 
   if (name === "chat") {
     channelsEl.style.display = "flex";
@@ -463,7 +455,7 @@ function activateView(name) {
   if (name === "profile") {
     showDynamicProfile(viewedUsername); 
   }
-  if (name === "explore") { // 👈 NOVO
+  if (name === "explore") { 
     apiGetExplorePosts();
   }
 }
@@ -472,11 +464,6 @@ function activateView(name) {
 // 6. LÓGICA DE PERFIL DINÂMICO E SEGUIR
 // ===================================================
 
-// ... (sem mudanças)
-async function showDynamicProfile(username) { /* ... */ }
-async function apiFollow(username) { /* ... */ }
-async function apiUnfollow(username) { /* ... */ }
-// (Vou omitir o código completo destas funções para ser breve, copie-as da sua versão anterior)
 async function showDynamicProfile(username) {
   if (!username) return;
   apiGetProfile(username);

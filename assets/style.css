@@ -83,10 +83,12 @@ a{color:inherit;text-decoration:none}
 
 /* Correção do Layout (Grid) */
 .app.view-feed .channels,
-.app.view-profile .channels {
+.app.view-profile .channels,
+.app.view-explore .channels { /* Adicionado explore aqui */
   display: none;
 }
-.app.view-feed {
+.app.view-feed,
+.app.view-explore { /* Adicionado explore aqui */
   grid-template-columns: 80px 1fr;
   grid-template-rows: 64px 1fr 64px;
   grid-template-areas: "servers header" "servers chat" "servers userbar";
@@ -113,9 +115,13 @@ a{color:inherit;text-decoration:none}
   display:grid;
   grid-template-rows: 56px auto 1fr;
   box-shadow: var(--shadow);
-  /* height: 100%; */ /* <-- REMOVEMOS a correção anterior */
-  min-height: 0;      /* <-- ❗️ ESTA É A NOVA CORREÇÃO ❗️ */
+  min-height: 0; 
 }
+/* A secção "Explorar" usa a mesma classe .feed, por isso herda o layout */
+#view-explore.feed {
+  grid-template-rows: 56px 1fr; /* O Explorar não tem composer */
+}
+
 .feed-top{display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.06);background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);border-top-left-radius: var(--radius);border-top-right-radius: var(--radius); min-height: 56px;}
 .composer-feed{display:flex;gap:10px;padding:12px;border-bottom:1px solid rgba(255,255,255,.06)}
 .composer-feed .input{min-height:44px}
@@ -125,7 +131,7 @@ a{color:inherit;text-decoration:none}
   display:flex;
   flex-direction:column;
   gap:12px;
-  min-height: 0; /* <-- Esta linha ainda é necessária e correta */
+  min-height: 0;
 }
 .post{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;display:grid;grid-template-columns:44px 1fr;gap:10px}
 .post .meta{margin:0 0 6px 0}
@@ -154,7 +160,7 @@ a{color:inherit;text-decoration:none}
   display:flex;
   flex-direction:column;
   gap:12px;
-  min-height: 0; /* Esta linha ainda é necessária e correta */
+  min-height: 0;
 }
 .msg{display:grid;grid-template-columns: 44px 1fr;gap:10px;align-items:start;animation:fadeIn .3s ease}
 .avatar{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background: linear-gradient(135deg, var(--orkut-blue), var(--orkut-pink));font-weight:800}
@@ -173,24 +179,39 @@ a{color:inherit;text-decoration:none}
 .user-actions{display:flex;gap:8px}
 /* Utilities */
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-/* Responsivo */
-@media (max-width: 1080px){
-  .app.view-chat{grid-template-columns:72px 1fr;grid-template-rows:64px auto 64px 1fr;grid-template-areas: "servers header" "servers channels" "servers userbar" "servers chat"}
-  .app.view-feed{grid-template-columns:72px 1fr;grid-template-rows:64px 1fr 64px;grid-template-areas: "servers header" "servers chat" "servers userbar"}
-  .app.view-profile{grid-template-columns:72px 1fr;grid-template-rows:64px 1fr 64px;grid-template-areas: "servers header" "servers chat" "servers userbar"}
-}
-@media (max-width: 720px){
-  .app.view-chat{grid-template-columns:64px 1fr;grid-template-rows:64px auto 1fr 64px;grid-template-areas: "servers header" "servers channels" "servers chat" "servers userbar"}
-  .app.view-feed{grid-template-columns:64px 1fr;grid-template-rows:64px 1fr 64px;grid-template-areas: "servers header" "servers chat" "servers userbar"}
-  .app.view-profile{grid-template-columns:64px 1fr;grid-template-rows:64px 1fr 64px;grid-template-areas: "servers header" "servers chat" "servers userbar"}
-  .header-actions{display:none}
-}
+
+/* --- Aprimoramento: Nomes clicáveis no Feed --- */
 .post-username {
   cursor: pointer;
   transition: .2s;
 }
-
 .post-username:hover {
-  color: var(--orkut-blue); /* Usa a cor azul do teu tema */
+  color: var(--orkut-blue);
   text-decoration: underline;
+}
+
+/* --- 👇 MUDANÇA: Aprimoramento: Userbar Clicável 👇 --- */
+.userbar .me.clickable {
+  cursor: pointer;
+  border-radius: 8px;
+  transition: .2s background;
+  padding: 4px; /* Adiciona um respiro */
+  margin-left: -4px; /* Compensa o padding */
+}
+.userbar .me.clickable:hover {
+  background: rgba(255, 255, 255, .05);
+}
+
+
+/* Responsivo */
+@media (max-width: 1080px){
+  .app.view-chat{grid-template-columns:72px 1fr;grid-template-rows:64px auto 64px 1fr;grid-template-areas: "servers header" "servers channels" "servers userbar" "servers chat"}
+  .app.view-feed, .app.view-explore{grid-template-columns:72px 1fr;grid-template-rows:64px 1fr 64px;grid-template-areas: "servers header" "servers chat" "servers userbar"}
+  .app.view-profile{grid-template-columns:72px 1fr;grid-template-rows:64px 1fr 64px;grid-template-areas: "servers header" "servers chat" "servers userbar"}
+}
+@media (max-width: 720px){
+  .app.view-chat{grid-template-columns:64px 1fr;grid-template-rows:64px auto 1fr 64px;grid-template-areas: "servers header" "servers channels" "servers chat" "servers userbar"}
+  .app.view-feed, .app.view-explore{grid-template-columns:64px 1fr;grid-template-rows:64px 1fr 64px;grid-template-areas: "servers header" "servers chat" "servers userbar"}
+  .app.view-profile{grid-template-columns:64px 1fr;grid-template-rows:64px 1fr 64px;grid-template-areas: "servers header" "servers chat" "servers userbar"}
+  .header-actions{display:none}
 }
