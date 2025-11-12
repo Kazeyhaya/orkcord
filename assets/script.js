@@ -17,9 +17,7 @@ const userInitial = currentUser.slice(0, 2).toUpperCase();
 document.getElementById("userAvatar").textContent = userInitial;
 document.getElementById("profileAvatar").textContent = userInitial; // Atualiza avatar do perfil
 
-// ===============================================
-// 👇 "MEMÓRIA" DE LIKES ADICIONADA AQUI 👇
-// ===============================================
+// "Memória" de Likes: Guarda os IDs dos posts que o usuário curtiu
 let likedPostsInSession = new Set();
 
 // --- Referências do Chat ---
@@ -95,23 +93,40 @@ async function apiCreatePost() {
 }
 
 async function apiLikePost(postId) {
-  // ===============================================
-  // 👇 VERIFICAÇÃO DE LIKE ADICIONADA AQUI 👇
-  // ===============================================
-  // Se o post já está na nossa "memória", não faz nada
-  if (likedPostsInSession.has(postId)) return; 
-  // Adiciona o post na "memória"
-  likedPostsInSession.add(postId);
+  // Adiciona o post na "memória" ANTES de chamar a API
+  likedPostsInSession.add(postId.toString());
+  // Atualiza o feed otimisticamente (sem esperar o servidor)
+  apiGetPosts(); 
   
   try {
     await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
-    apiGetPosts(); 
+    // O refresh (apiGetPosts) já foi chamado, então não precisa de novo
   } catch (err) {
     console.error("Falha ao dar like:", err);
     // Se der erro, remove da memória para o usuário poder tentar de novo
-    likedPostsInSession.delete(postId);
+    likedPostsInSession.delete(postId.toString());
+    apiGetPosts(); // Reverte o like
   }
 } 
+
+// ===============================================
+// 👇 FUNÇÃO DE "DESCURTIR" (UNLIKE) ADICIONADA AQUI 👇
+// ===============================================
+async function apiUnlikePost(postId) {
+  // Remove o post da "memória" ANTES de chamar a API
+  likedPostsInSession.delete(postId.toString());
+  // Atualiza o feed otimisticamente
+  apiGetPosts();
+
+  try {
+    await fetch(`/api/posts/${postId}/unlike`, { method: 'POST' });
+  } catch (err) {
+    console.error("Falha ao descurtir:", err);
+    // Se der erro, adiciona de volta na memória
+    likedPostsInSession.add(postId.toString());
+    apiGetPosts(); // Reverte o unlike
+  }
+}
 
 // --- Renderização do Feed ---
 function renderPosts(posts) {
@@ -128,10 +143,8 @@ function renderPosts(posts) {
     const postUserInitial = (post.user || "?").slice(0, 2).toUpperCase();
     const postTime = new Date(post.timestamp).toLocaleString('pt-BR');
 
-    // ===============================================
-    // 👇 VERIFICAÇÃO DE "JÁ CURTIDO" ADICIONADA AQUI 👇
-    // ===============================================
-    const isLiked = likedPostsInSession.has(post.id.toString()); // Verifica a "memória"
+    // Verifica a "memória" para saber se o post foi curtido
+    const isLiked = likedPostsInSession.has(post.id.toString()); 
 
     node.innerHTML = `
       <div class="avatar">${escapeHtml(postUserInitial)}</div>
@@ -139,7 +152,7 @@ function renderPosts(posts) {
         <div class="meta"><strong>${escapeHtml(post.user)}</strong> • ${postTime}</div>
         <div>${escapeHtml(post.text)}</div>
         <div class="post-actions">
-          <button class="mini-btn" data-like="${post.id}" ${isLiked ? 'disabled' : ''}>
+          <button class="mini-btn ${isLiked ? 'liked' : ''}" data-like="${post.id}">
             ❤ ${post.likes || 0}
           </button>
           <button class="mini-btn" data-comment="${post.id}">Comentar</button>
@@ -158,12 +171,22 @@ feedInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") apiCreatePost();
 });
 
-// "Ouvinte" de cliques para a área de posts (pega os cliques nos botões de Like)
+// ===============================================
+// 👇 "OUVINTE" DE LIKES ATUALIZADO 👇
+// ===============================================
 postsEl.addEventListener("click", (e) => {
-  if (e.target.matches('[data-like]')) {
-    const postId = e.target.dataset.like; 
-    // Não precisamos mais desabilitar aqui, a "memória" cuida disso
-    apiLikePost(postId);
+  const clickedButton = e.target.closest('[data-like]'); // Pega o botão
+  if (clickedButton) {
+    const postId = clickedButton.dataset.like; 
+    
+    // Agora ele checa se o botão tem a classe '.liked'
+    if (clickedButton.classList.contains('liked')) {
+      // Se tem, DESCURTE
+      apiUnlikePost(postId);
+    } else {
+      // Se não tem, CURTE
+      apiLikePost(postId);
+    }
   }
 });
 

@@ -120,27 +120,41 @@ app.post('/api/posts', async (req, res) => {
   }
 });
 
-// ===============================================
-// 👇 ROTA DE "CURTIR" (LIKE) ADICIONADA AQUI 👇
-// ===============================================
+// [POST] Rota para DAR LIKE em um post
 app.post('/api/posts/:id/like', async (req, res) => {
   try {
-    const { id } = req.params; // Pega o ID do post da URL
-
+    const { id } = req.params; 
     const result = await pool.query(
-      // Adiciona 1 ao contador de likes e retorna o valor novo
       `UPDATE posts SET likes = likes + 1 WHERE id = $1 RETURNING likes`,
       [id]
     );
-
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Post não encontrado' });
     }
-
-    res.status(200).json(result.rows[0]); // Envia de volta: { likes: 1 }
-
+    res.status(200).json(result.rows[0]); 
   } catch (err) {
     console.error('Erro ao dar like:', err);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// ===============================================
+// 👇 ROTA DE "DESCURTIR" (UNLIKE) ADICIONADA AQUI 👇
+// ===============================================
+app.post('/api/posts/:id/unlike', async (req, res) => {
+  try {
+    const { id } = req.params; 
+    const result = await pool.query(
+      // Usa GREATEST para garantir que o like nunca fique negativo
+      `UPDATE posts SET likes = GREATEST(0, likes - 1) WHERE id = $1 RETURNING likes`,
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Post não encontrado' });
+    }
+    res.status(200).json(result.rows[0]); 
+  } catch (err) {
+    console.error('Erro ao descurtir:', err);
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
