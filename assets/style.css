@@ -105,7 +105,16 @@ a{color:inherit;text-decoration:none}
 /* Chat */
 .chat{grid-area: chat;background: var(--discord-dark);border:1px solid rgba(255,255,255,.06);border-radius: var(--radius);display:grid;grid-template-rows: 56px 1fr 74px;box-shadow: var(--shadow)}
 /* Feed */
-.feed{grid-area: chat;background: var(--discord-dark);border:1px solid rgba(255,255,255,.06);border-radius: var(--radius);display:grid;grid-template-rows: 56px auto 1fr;box-shadow: var(--shadow)}
+.feed{
+  grid-area: chat;
+  background: var(--discord-dark);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius);
+  display:grid;
+  grid-template-rows: 56px auto 1fr;
+  box-shadow: var(--shadow);
+  height: 100%; /* <-- ❗️ ESTA É A NOVA LINHA DE CORREÇÃO ❗️ */
+}
 .feed-top{display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.06);background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);border-top-left-radius: var(--radius);border-top-right-radius: var(--radius); min-height: 56px;}
 .composer-feed{display:flex;gap:10px;padding:12px;border-bottom:1px solid rgba(255,255,255,.06)}
 .composer-feed .input{min-height:44px}
@@ -115,7 +124,7 @@ a{color:inherit;text-decoration:none}
   display:flex;
   flex-direction:column;
   gap:12px;
-  min-height: 0; /* <-- ❗️ CORREÇÃO DO SCROLL DO FEED ESTÁ AQUI */
+  min-height: 0; /* <-- Esta linha (da correção anterior) ainda é necessária */
 }
 .post{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;display:grid;grid-template-columns:44px 1fr;gap:10px}
 .post .meta{margin:0 0 6px 0}
@@ -144,7 +153,7 @@ a{color:inherit;text-decoration:none}
   display:flex;
   flex-direction:column;
   gap:12px;
-  min-height: 0; /* <-- ❗️ CORREÇÃO DO SCROLL DO CHAT ESTÁ AQUI */
+  min-height: 0; /* <-- Esta linha (da correção anterior) ainda é necessária */
 }
 .msg{display:grid;grid-template-columns: 44px 1fr;gap:10px;align-items:start;animation:fadeIn .3s ease}
 .avatar{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background: linear-gradient(135deg, var(--orkut-blue), var(--orkut-pink));font-weight:800}
