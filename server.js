@@ -84,7 +84,7 @@ async function setupDatabase() {
 
 // --- Rota Principal (O HTML) ---
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'orkcord.html')); 
+  res.sendFile(path.join(__dirname, 'agora.html')); // <--- MUDANÇA AQUI: agora.html
 });
 
 // --- API (Parte "Feed") ---
@@ -138,9 +138,7 @@ app.post('/api/posts/:id/like', async (req, res) => {
   }
 });
 
-// ===============================================
-// 👇 ROTA DE "DESCURTIR" (UNLIKE) ADICIONADA AQUI 👇
-// ===============================================
+// [POST] Rota para DESCURTIR (UNLIKE) um post
 app.post('/api/posts/:id/unlike', async (req, res) => {
   try {
     const { id } = req.params; 
@@ -237,7 +235,7 @@ app.post('/api/testimonials', async (req, res) => {
 io.on('connection', (socket) => {
   console.log(`Um utilizador conectou-se: ${socket.id}`);
 
-  // 1. OUVIR QUANDO O UTILIZADOR MUDA DE CANAL (CORRIGIDO)
+  // 1. OUVIR QUANDO O UTILIZADOR MUDA DE CANAL
   socket.on('joinChannel', async (data) => {
     const channelName = (typeof data === 'object' && data.channel) ? data.channel : data;
     if (!channelName || typeof channelName !== 'string') {
@@ -291,6 +289,6 @@ io.on('connection', (socket) => {
 // --- Iniciar o Servidor ---
 setupDatabase().then(() => {
   server.listen(port, () => {
-    console.log(`OrkCord a rodar na porta ${port}`);
+    console.log(`Agora a rodar na porta ${port}`); // <--- MUDANÇA AQUI: Agora
   });
 });

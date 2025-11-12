@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agora - Comunidades e Conversas</title>
+    <link rel="stylesheet" href="/assets/style.css">
+    <link rel="icon" href="/assets/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <div class="app view-feed">
+        <aside class="sidebar">
+            <div class="logo-area">
+                <img src="/assets/agora-logo.png" alt="Logo Agora" class="app-logo"> <span class="app-name">Agora</span>
+            </div>
+
+            <div class="user-card">
+                <div class="avatar" id="userAvatar">VC</div>
+                <div class="user-info">
+                    <div class="user-name">Você</div>
+                    <div class="user-id" id="userName">@user</div> <div class="user-mood">Mood: 😊 Feliz</div>
+                </div>
+                <button class="settings-btn" aria-label="Configurações">⚙️</button>
+            </div>
+
+            <nav class="channels" style="display: none;">
+                <div class="channels-header">Canais de Texto</div>
+                <ul>
+                    <li><button class="channel active" data-channel="geral"># geral</button></li>
+                    <li><button class="channel" data-channel="scraps"># scraps</button></li>
+                    <li><button class="channel" data-channel="depoimentos"># depoimentos</button></li>
+                    <li><button class="channel" data-channel="albuns"># álbuns</button></li>
+                </ul>
+                <div class="channels-header">Canais de Voz</div>
+                <ul>
+                    <li><button class="channel" data-channel="geral-voz"># geral</button></li>
+                    <li><button class="channel" data-channel="musica"># música</button></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="main-header">
+                <nav class="view-tabs">
+                    <button class="pill active" data-view="feed">Feed</button>
+                    <button class="pill" data-view="chat">Chat</button>
+                    <button class="pill" data-view="profile">Perfil</button>
+                    <button class="pill" data-view="explore">Explorar</button>
+                </nav>
+            </header>
+
+            <section id="view-feed" class="view-section">
+                <div class="feed-header">
+                    <h2>AgoraFeed — Postagens das suas comunidades</h2> <button id="btn-refresh" class="mini-btn">🔄 Atualizar</button>
+                </div>
+                <div class="post-composer">
+                    <textarea id="feedInput" placeholder="Compartilhe algo..."></textarea>
+                    <button id="feedSend" class="publicar-btn">Publicar</button>
+                </div>
+                <div id="posts" class="posts-list">
+                    </div>
+            </section>
+
+            <section id="view-chat" class="view-section" hidden>
+                <div class="chat-header">
+                    <span id="topic"># geral</span>
+                </div>
+                <div id="messages" class="chat-messages">
+                    </div>
+                <div class="chat-composer">
+                    <input type="text" id="composerInput" placeholder="Envie uma mensagem para #geral">
+                    <button id="sendBtn" class="chat-send-btn">Enviar</button>
+                </div>
+            </section>
+
+            <section id="view-profile" class="view-section" hidden>
+                <div class="profile-header">
+                    <div class="profile-avatar" id="profileAvatar">VC</div>
+                    <h2 class="profile-name" id="profileName">@user</h2>
+                </div>
+                <div class="profile-section">
+                    <h3>Minha Bio</h3>
+                    <p id="profileBio">Apaixonado por comunidades e bate-papo.</p>
+                    <button id="editBioBtn" class="mini-btn">Editar Bio</button>
+                </div>
+                <div class="profile-section">
+                    <h3>Depoimentos para mim</h3>
+                    <div class="testimonial-composer">
+                        <textarea id="testimonialInput" placeholder="Deixe um depoimento..."></textarea>
+                        <button id="testimonialSend" class="publicar-btn">Deixar Depoimento</button>
+                    </div>
+                    <div id="testimonials" class="testimonials-list">
+                        </div>
+                </div>
+            </section>
+
+            <section id="view-explore" class="view-section" hidden>
+                <div class="explore-content">
+                    <h2>Em breve: Mais comunidades e recursos para você explorar no Agora!</h2>
+                    <p>Fique ligado nas próximas atualizações.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/assets/script.js"></script>
+</body>
+</html>

@@ -146,3 +146,24 @@ a{color:inherit;text-decoration:none}
   .app.view-profile{grid-template-columns:64px 1fr;grid-template-rows:64px 1fr 64px;grid-template-areas: "servers header" "servers chat" "servers userbar"}
   .header-actions{display:none}
 }
+/* Nova Logo do Agora */
+.sidebar .app-logo {
+    width: 32px; /* Ou o tamanho que você achar melhor */
+    height: 32px;
+    margin-right: 8px;
+    vertical-align: middle; /* Alinha com o texto */
+}
+
+.sidebar .app-name {
+    font-size: 1.5em; /* Tamanho do texto "Agora" */
+    font-weight: bold;
+    color: var(--text-color); /* Usa a cor de texto padrão */
+}
+
+.sidebar .logo-area {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: var(--sidebar-bg); /* Garante que o fundo seja o da sidebar */
+    border-bottom: 1px solid var(--border-color);
+}
