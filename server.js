@@ -81,6 +81,7 @@ app.get('/', (req, res) => {
 });
 
 // --- API (Feed, Perfil, Amigos, etc.) ---
+// ... (rotas /api/posts, /profile, /following, /follow, etc. - Sem mudanças) ...
 app.get('/api/posts', async (req, res) => {
   const { user } = req.query; 
   if (!user) { return res.status(400).json({ error: 'Utilizador não fornecido' }); }
@@ -197,14 +198,38 @@ app.post('/api/unfollow', async (req, res) => {
     res.status(200).json({ message: 'Deixou de seguir com sucesso' });
   } catch (err) { res.status(500).json({ error: 'Erro no servidor' }); }
 });
-app.get('/api/communities/explore', async (req, res) => {
-  try {
-    const result = await pool.query(`SELECT * FROM communities ORDER BY members DESC`);
-    res.json({ communities: result.rows });
-  } catch (err) { res.status(500).json({ error: 'Erro no servidor' }); }
-});
 
 // --- API (Comunidades) ---
+
+// ===============================================
+// 👇 MUDANÇA: ROTA "EXPLORAR COMUNIDADES" ATUALIZADA 👇
+// ===============================================
+app.get('/api/communities/explore', async (req, res) => {
+  const { user_name } = req.query; // ex: /api/communities/explore?user_name=Alexandre
+  if (!user_name) {
+    return res.status(400).json({ error: 'Utilizador não fornecido' });
+  }
+  
+  try {
+    // Esta consulta SQL agora é mais inteligente:
+    // 1. Seleciona todas as comunidades (c)
+    // 2. Faz um LEFT JOIN com community_members (cm) para *este* utilizador
+    // 3. ONDE cm.user_name IS NULL (ou seja, onde não houve correspondência)
+    // 4. Isto retorna apenas comunidades onde o utilizador NÃO está.
+    const result = await pool.query(
+      `SELECT c.* FROM communities c
+       LEFT JOIN community_members cm ON c.id = cm.community_id AND cm.user_name = $1
+       WHERE cm.user_name IS NULL
+       ORDER BY c.members DESC`,
+      [user_name]
+    );
+    res.json({ communities: result.rows });
+  } catch (err) {
+    console.error('Erro ao buscar comunidades:', err);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
 app.post('/api/community/join', async (req, res) => {
   const { user_name, community_id } = req.body;
   if (!user_name || !community_id) {
@@ -239,7 +264,9 @@ app.get('/api/communities/joined', async (req, res) => {
   }
 });
 
+
 // --- Lógica do Socket.IO (Chat) ---
+// ... (sem mudanças) ...
 io.on('connection', (socket) => {
   console.log(`Um utilizador conectou-se: ${socket.id}`);
   socket.on('joinChannel', async (data) => {
