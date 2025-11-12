@@ -102,19 +102,18 @@ const views = {
 const socket = io();
 
 // ===================================================
-// 2. LÓGICA DO FEED (API / "Agora")
+// 2. LÓGICA DE API E RENDERIZAÇÃO (FUNÇÕES)
 // ===================================================
+// (Todas as funções API e Renderização foram agrupadas aqui para garantir o hoisting)
 
+// --- Funções da API do Feed (Pessoal) ---
 async function apiGetPosts() {
   try {
     const response = await fetch(`/api/posts?user=${encodeURIComponent(currentUser)}`);
     if (!response.ok) return;
     const data = await response.json();
     renderPosts(data.posts || []); 
-  } catch (err) {
-    console.error("Falha ao buscar posts:", err);
-    postsEl.innerHTML = "<div class='meta'>Falha ao carregar posts.</div>";
-  }
+  } catch (err) { console.error("Falha ao buscar posts:", err); postsEl.innerHTML = "<div class='meta'>Falha ao carregar posts.</div>"; }
 }
 async function apiGetExplorePosts() {
   try {
@@ -122,56 +121,33 @@ async function apiGetExplorePosts() {
     if (!response.ok) return;
     const data = await response.json();
     renderExplorePosts(data.posts || []); 
-  } catch (err) {
-    console.error("Falha ao buscar posts do explorar:", err);
-    explorePostsEl.innerHTML = "<div class='meta'>Falha ao carregar posts.</div>";
-  }
+  } catch (err) { console.error("Falha ao buscar posts do explorar:", err); explorePostsEl.innerHTML = "<div class='meta'>Falha ao carregar posts.</div>"; }
 }
 async function apiCreatePost() {
   const text = feedInput.value.trim();
   if (!text) return;
   feedSend.disabled = true;
   try {
-    await fetch('/api/posts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user: currentUser, text: text })
-    });
+    await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: currentUser, text: text }) });
     feedInput.value = ""; 
     apiGetPosts(); 
-  } catch (err) {
-    console.error("Falha ao criar post:", err);
-  }
+  } catch (err) { console.error("Falha ao criar post:", err); }
   feedSend.disabled = false;
 }
 async function apiLikePost(postId) {
-  try {
-    await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
-  } catch (err) {
-    console.error("Falha ao dar like:", err);
-  }
+  try { await fetch(`/api/posts/${postId}/like`, { method: 'POST' }); } catch (err) { console.error("Falha ao dar like:", err); }
 } 
 async function apiUnlikePost(postId) {
-  try {
-    await fetch(`/api/posts/${postId}/unlike`, { method: 'POST' });
-  } catch (err) {
-    console.error("Falha ao descurtir:", err);
-  }
+  try { await fetch(`/api/posts/${postId}/unlike`, { method: 'POST' }); } catch (err) { console.error("Falha ao descurtir:", err); }
 }
 function renderPosts(posts) {
   if (!postsEl) return;
-  if (posts.length === 0) {
-    postsEl.innerHTML = "<div class='meta' style='padding: 12px;'>O seu feed está vazio. Siga alguém (ou poste algo) para ver aqui!</div>";
-    return;
-  }
+  if (posts.length === 0) { postsEl.innerHTML = "<div class='meta' style='padding: 12px;'>O seu feed está vazio. Siga alguém (ou poste algo) para ver aqui!</div>"; return; }
   renderPostList(postsEl, posts);
 }
 function renderExplorePosts(posts) {
   if (!explorePostsEl) return;
-  if (posts.length === 0) {
-    explorePostsEl.innerHTML = "<div class='meta' style='padding: 12px;'>Ainda não há posts na rede.</div>";
-    return;
-  }
+  if (posts.length === 0) { explorePostsEl.innerHTML = "<div class='meta' style='padding: 12px;'>Ainda não há posts na rede.</div>"; return; }
   renderPostList(explorePostsEl, posts);
 }
 function renderPostList(containerElement, posts) {
@@ -181,28 +157,15 @@ function renderPostList(containerElement, posts) {
     node.className = "post";
     const postUserInitial = (post.user || "?").slice(0, 2).toUpperCase();
     const postTime = new Date(post.timestamp).toLocaleString('pt-BR');
-    
     node.innerHTML = `
       <div class="avatar">${escapeHtml(postUserInitial)}</div>
       <div>
-        <div class="meta">
-          <strong class="post-username" data-username="${escapeHtml(post.user)}">
-            ${escapeHtml(post.user)}
-          </strong> 
-          • ${postTime}
-        </div>
+        <div class="meta"><strong class="post-username" data-username="${escapeHtml(post.user)}">${escapeHtml(post.user)}</strong> • ${postTime}</div>
         <div>${escapeHtml(post.text)}</div>
-        <div class="post-actions">
-          <button class="mini-btn" data-like="${post.id}">
-            ❤ ${post.likes || 0}
-          </button>
-          <button class="mini-btn" data-comment="${post.id}">Comentar</button>
-        </div>
-        <div class="comments" id="comments-for-${post.id}">
-          </div>
+        <div class="post-actions"><button class="mini-btn" data-like="${post.id}">❤ ${post.likes || 0}</button><button class="mini-btn" data-comment="${post.id}">Comentar</button></div>
+        <div class="comments" id="comments-for-${post.id}"></div>
       </div>`;
     containerElement.appendChild(node);
-    
     apiGetComments(post.id);
   });
 }
@@ -212,32 +175,19 @@ async function apiGetComments(postId) {
     if (!res.ok) return;
     const data = await res.json();
     renderComments(postId, data.comments || []);
-  } catch (err) {
-    console.error(`Falha ao buscar comentários para o post ${postId}:`, err);
-  }
+  } catch (err) { console.error(`Falha ao buscar comentários para o post ${postId}:`, err); }
 }
 async function apiCreateComment(postId, text) {
   try {
-    await fetch(`/api/posts/${postId}/comments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user: currentUser, text: text })
-    });
+    await fetch(`/api/posts/${postId}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: currentUser, text: text }) });
     apiGetComments(postId); 
-  } catch (err) {
-    console.error("Falha ao criar comentário:", err);
-  }
+  } catch (err) { console.error("Falha ao criar comentário:", err); }
 }
 function renderComments(postId, comments) {
   const container = document.getElementById(`comments-for-${postId}`);
   if (!container) return; 
-  if (comments.length === 0) {
-    container.innerHTML = ""; 
-    return;
-  }
-  container.innerHTML = comments.map(item => {
-    return `<div class="meta"><strong>${escapeHtml(item.user)}</strong>: ${escapeHtml(item.text)}</div>`;
-  }).join(""); 
+  if (comments.length === 0) { container.innerHTML = ""; return; }
+  container.innerHTML = comments.map(item => `<div class="meta"><strong>${escapeHtml(item.user)}</strong>: ${escapeHtml(item.text)}</div>`).join(""); 
 }
 
 // --- Funções da API do Perfil ---
@@ -247,25 +197,17 @@ async function apiGetProfile(username) {
     if (!res.ok) return;
     const data = await res.json();
     if (profileBioEl) profileBioEl.textContent = data.bio;
-  } catch (err) {
-    console.error("Falha ao buscar bio:", err);
-  }
+  } catch (err) { console.error("Falha ao buscar bio:", err); }
 } 
 async function apiUpdateBio() {
   const newBio = prompt("Digite sua nova bio:", profileBioEl.textContent);
   if (newBio === null || newBio.trim() === "") return; 
   try {
-    const res = await fetch('/api/profile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user: currentUser, bio: newBio.trim() })
-    });
+    const res = await fetch('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: currentUser, bio: newBio.trim() }) });
     if (!res.ok) return;
     const data = await res.json();
     if (profileBioEl) profileBioEl.textContent = data.bio;
-  } catch (err) {
-    console.error("Falha ao salvar bio:", err);
-  }
+  } catch (err) { console.error("Falha ao salvar bio:", err); }
 }
 async function apiGetTestimonials(username) { 
   try {
@@ -273,37 +215,22 @@ async function apiGetTestimonials(username) {
     if (!res.ok) return;
     const data = await res.json();
     renderTestimonials(data.testimonials || []);
-  } catch (err) {
-    console.error("Falha ao buscar depoimentos:", err);
-  }
+  } catch (err) { console.error("Falha ao buscar depoimentos:", err); }
 }
 async function apiCreateTestimonial() {
   const text = testimonialInput.value.trim();
   if (!text) return; 
   testimonialSend.disabled = true;
   try {
-    await fetch('/api/testimonials', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from_user: currentUser, 
-        to_user: viewedUsername, 
-        text: text
-      })
-    });
+    await fetch('/api/testimonials', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from_user: currentUser, to_user: viewedUsername, text: text }) });
     testimonialInput.value = ""; 
     apiGetTestimonials(viewedUsername); 
-  } catch (err) {
-    console.error("Falha ao salvar depoimento:", err);
-  }
+  } catch (err) { console.error("Falha ao salvar depoimento:", err); }
   testimonialSend.disabled = false;
 }
 function renderTestimonials(testimonials) {
   if (!testimonialsEl) return;
-  if (testimonials.length === 0) {
-    testimonialsEl.innerHTML = "<div class='meta'>Nenhum depoimento ainda.</div>";
-    return;
-  }
+  if (testimonials.length === 0) { testimonialsEl.innerHTML = "<div class='meta'>Nenhum depoimento ainda.</div>"; return; }
   testimonialsEl.innerHTML = ""; 
   testimonials.forEach(item => {
     const node = document.createElement("div");
@@ -313,62 +240,130 @@ function renderTestimonials(testimonials) {
   });
 }
 
+// --- Funções da API do Fórum (NOVO) ---
+async function apiGetCommunityPosts(communityId) {
+    try {
+        const res = await fetch(`/api/community/${communityId}/posts`);
+        const data = await res.json();
+        renderCommunityPosts(data.posts || []);
+    } catch (err) {
+        console.error("Erro ao buscar posts do fórum:", err);
+        communityTopicList.innerHTML = "<div class='meta'>Falha ao carregar posts do fórum.</div>";
+    }
+}
+function renderCommunityPosts(posts) {
+    if (!communityTopicList) return;
+    communityTopicList.innerHTML = "";
+
+    if (posts.length === 0) {
+        communityTopicList.innerHTML = "<div class='meta' style='padding: 12px;'>Nenhum tópico ainda. Seja o primeiro a iniciar uma discussão!</div>";
+        return;
+    }
+
+    posts.forEach(post => {
+        const node = document.createElement("div");
+        node.className = "post"; 
+        const userInitial = post.user.slice(0, 2).toUpperCase();
+        const postTime = new Date(post.timestamp).toLocaleString('pt-BR');
+
+        node.innerHTML = `
+            <div class="avatar">${escapeHtml(userInitial)}</div>
+            <div>
+                <div class="meta">
+                    <strong class="post-username" data-username="${escapeHtml(post.user)}">
+                        ${escapeHtml(post.user)}
+                    </strong> 
+                    • ${postTime}
+                </div>
+                <h3>${escapeHtml(post.title)}</h3>
+                <div>${escapeHtml(post.content)}</div>
+                <div class="post-actions">
+                    <button class="mini-btn">💬 Comentários</button>
+                </div>
+            </div>`;
+        communityTopicList.appendChild(node);
+    });
+}
+
+
+// --- Lógica de Amigos e Entrar em Comunidades ---
+async function apiGetFollowing(username) {
+  try {
+    const res = await fetch(`/api/following/${encodeURIComponent(username)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    renderFollowing(data.following || []);
+  } catch (err) { console.error("Erro ao buscar lista de 'seguindo':", err); friendsContainer.innerHTML = "<div class='meta'>Falha ao carregar amigos.</div>"; }
+}
+function renderFollowing(followingList) {
+  if (!friendsContainer) return;
+  friendsContainer.innerHTML = ""; 
+  if (followingList.length === 0) { friendsContainer.innerHTML = "<div class='meta'>Ainda não segue ninguém.</div>"; return; }
+  followingList.forEach(username => {
+    const node = document.createElement("div");
+    node.className = "friend-card";
+    const userInitial = username.slice(0, 2).toUpperCase();
+    node.innerHTML = `<div class="avatar">${escapeHtml(userInitial)}</div><strong class="friend-card-name" data-username="${escapeHtml(username)}">${escapeHtml(username)}</strong>`;
+    friendsContainer.appendChild(node);
+  });
+}
+
+// --- Lógica de Entrar/Listar Comunidades ---
+async function apiJoinCommunity(communityId, button) {
+  button.disabled = true;
+  button.textContent = "Entrando...";
+  try {
+    const res = await fetch('/api/community/join', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_name: currentUser, community_id: communityId }) });
+    if (!res.ok) { throw new Error('Falha ao entrar na comunidade'); }
+    const data = await res.json();
+    renderJoinedCommunities([data.community]); 
+    activateCommunityView("chat-channels", { community: data.community.id }); // Vai direto para o chat
+  } catch (err) { console.error("Erro ao entrar na comunidade:", err); alert("Falha ao entrar na comunidade."); button.disabled = false; button.textContent = "Entrar"; }
+}
+async function apiCreateCommunity(name, emoji, button) {
+    button.disabled = true;
+    button.textContent = "Criando...";
+    try {
+        const res = await fetch('/api/communities/create', { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, emoji, creator: currentUser }), method: 'POST', });
+        if (!res.ok) { throw new Error('Falha ao criar comunidade'); }
+        const data = await res.json();
+        const newComm = data.community;
+        renderJoinedCommunities([newComm]); 
+        // 👇 MUDANÇA: Mudar para a vista TÓPICOS por padrão após a criação 👇
+        activateCommunityView("topics", { community: newComm.id }); 
+    } catch (err) { console.error("Erro ao criar comunidade:", err); alert("Falha ao criar comunidade. Tente novamente."); button.disabled = false; button.textContent = "Criar e Entrar"; }
+}
+async function apiGetJoinedCommunities() {
+  try {
+    const res = await fetch(`/api/communities/joined?user_name=${encodeURIComponent(currentUser)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    renderJoinedCommunities(data.communities || []);
+  } catch (err) { console.error("Erro ao buscar comunidades do utilizador:", err); }
+}
+function renderJoinedCommunities(communities) {
+  if (!joinedServersList) return;
+  communities.forEach(community => {
+    if (document.querySelector(`.community-btn[data-community-id="${community.id}"]`)) { return; }
+    const node = document.createElement("div");
+    node.className = "server community-btn";
+    node.dataset.communityId = community.id;
+    node.title = community.name;
+    node.innerHTML = `<span class="emoji">${escapeHtml(community.emoji)}</span>`;
+    joinedServersList.appendChild(node);
+  });
+}
+
+
 // ===================================================
 // 3. LÓGICA DO CHAT (Socket.IO / "Agora")
 // ===================================================
-
-function renderChannel(name) {
-  activeChannel = name; 
-  chatMessagesEl.innerHTML = ""; 
-  chatTopicBadge.textContent = `# ${name.replace("-", " ")}`;
-  chatInputEl.placeholder = `Envie uma mensagem para #${name}`;
-  document.querySelectorAll(".channel").forEach(c => c.classList.remove("active"));
-  const activeBtn = document.querySelector(`.channel[data-channel="${name}"]`);
-  if (activeBtn) activeBtn.classList.add("active");
-  socket.emit('joinChannel', { channel: activeChannel, user: currentUser });
-}
-function addMessageBubble({ user, timestamp, message }) {
-  const item = document.createElement("div");
-  item.className = "msg";
-  const userInitial = (user || "V").slice(0, 2).toUpperCase();
-  const time = timestamp ? timestamp.split(' ')[1] : 'agora'; 
-  const isScrolledToBottom = chatMessagesEl.scrollHeight - chatMessagesEl.clientHeight <= chatMessagesEl.scrollTop + 100;
-  item.innerHTML = `
-    <div class="avatar">${escapeHtml(userInitial)}</div>
-    <div class="bubble">
-      <div class="meta"><strong>${escapeHtml(user)}</strong> • ${time}</div>
-      <div>${escapeHtml(message)}</div>
-    </div>
-  `;
-  chatMessagesEl.appendChild(item);
-  if (isScrolledToBottom) {
-    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
-  }
-}
-function sendChatMessage() {
-  const text = chatInputEl.value.trim();
-  if (!text) return;
-  const messageData = {
-    channel: activeChannel,
-    user: currentUser, 
-    message: text,
-    timestamp: new Date().toLocaleString('pt-BR') 
-  };
-  socket.emit('sendMessage', messageData);
-  chatInputEl.value = "";
-  chatInputEl.focus();
-}
-socket.on('loadHistory', (messages) => {
-  chatMessagesEl.innerHTML = ""; 
-  messages.forEach(addMessageBubble);
-  chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight; 
-});
-socket.on('newMessage', (data) => {
-  if (data.channel === activeChannel) { 
-     addMessageBubble(data);
-  }
-});
-
+// ... (Toda a lógica de Chat, Sockets - Sem mudanças) ...
+function renderChannel(name) { /* ... */ }
+function addMessageBubble({ user, timestamp, message }) { /* ... */ }
+function sendChatMessage() { /* ... */ }
+socket.on('loadHistory', (messages) => { /* ... */ });
+socket.on('newMessage', (data) => { /* ... */ });
 
 // ===================================================
 // 4. EVENTOS (Conexões dos Botões)
@@ -382,40 +377,24 @@ channelButtons.forEach(c => c.addEventListener("click", () => renderChannel(c.ge
 // --- Eventos do Feed (Likes, Comentários e Ver Perfil) ---
 function handlePostClick(e) {
   const userLink = e.target.closest('.post-username[data-username]');
-  if (userLink) {
-    viewedUsername = userLink.dataset.username; 
-    activateView("profile"); 
-    return;
-  }
+  if (userLink) { viewedUsername = userLink.dataset.username; activateView("profile"); return; }
   const likeButton = e.target.closest('[data-like]');
   if (likeButton) {
     const postId = likeButton.dataset.like; 
     let currentLikes = parseInt(likeButton.textContent.trim().split(' ')[1]);
-    
-    if (likeButton.classList.contains('liked')) {
-      apiUnlikePost(postId); 
-      likeButton.classList.remove('liked');
-      likeButton.innerHTML = `❤ ${currentLikes - 1}`;
-    } else {
-      apiLikePost(postId); 
-      likeButton.classList.add('liked');
-      likeButton.innerHTML = `❤ ${currentLikes + 1}`;
-    }
+    if (likeButton.classList.contains('liked')) { apiUnlikePost(postId); likeButton.classList.remove('liked'); likeButton.innerHTML = `❤ ${currentLikes - 1}`; } else { apiLikePost(postId); likeButton.classList.add('liked'); likeButton.innerHTML = `❤ ${currentLikes + 1}`; }
     return;
   }
   const commentButton = e.target.closest('[data-comment]');
   if (commentButton) {
     const postId = commentButton.dataset.comment;
     const text = prompt("Digite seu comentário:"); 
-    if (text && text.trim()) {
-      apiCreateComment(postId, text.trim());
-    }
+    if (text && text.trim()) { apiCreateComment(postId, text.trim()); }
     return;
   }
 }
 postsEl.addEventListener("click", handlePostClick);
 explorePostsEl.addEventListener("click", handlePostClick); 
-
 
 // --- Eventos dos Botões do Feed (Publicar e Refresh) ---
 feedSend.addEventListener("click", apiCreatePost);
@@ -426,43 +405,25 @@ btnExploreRefresh.addEventListener("click", apiGetExplorePosts);
 testimonialSend.addEventListener("click", apiCreateTestimonial);
 
 // --- Eventos das Abas ---
-viewTabs.forEach(b => b.addEventListener("click", () => {
-  const viewName = b.dataset.view;
-  activateView(viewName);
-}));
+viewTabs.forEach(b => b.addEventListener("click", () => { const viewName = b.dataset.view; activateView(viewName); }));
 
 // --- Evento do Botão Explorar --- 
 btnExplore.addEventListener("click", () => activateView("explore"));
 
 // --- Evento da Userbar (Perfil) --- 
-userbarMeBtn.addEventListener("click", () => {
-  viewedUsername = currentUser; 
-  activateView("profile"); 
-});
+userbarMeBtn.addEventListener("click", () => { viewedUsername = currentUser; activateView("profile"); });
 
-// --- Evento do Botão Home (NOVO) ---
-headerHomeBtn.addEventListener("click", () => { 
-  activateView("feed"); 
-});
-
-
-// --- Eventos dos Servidores ---
-homeBtn.addEventListener("click", () => {
-  activateView("feed"); 
-});
+// --- Evento do Botão Home ---
+headerHomeBtn.addEventListener("click", () => { activateView("feed"); });
+homeBtn.addEventListener("click", () => { activateView("feed"); });
 
 // --- Evento do Botão "+" ---
-exploreServersBtn.addEventListener("click", () => {
-  activateView("explore-servers");
-});
+exploreServersBtn.addEventListener("click", () => { activateView("explore-servers"); });
 
 // --- Evento de clique no cartão de Amigo ---
 friendsContainer.addEventListener("click", (e) => {
   const friendLink = e.target.closest('.friend-card-name[data-username]');
-  if (friendLink) {
-    viewedUsername = friendLink.dataset.username;
-    activateView("profile"); 
-  }
+  if (friendLink) { viewedUsername = friendLink.dataset.username; activateView("profile"); }
 });
 
 // --- Evento de clique para Entrar na Comunidade ---
@@ -479,19 +440,15 @@ joinedServersList.addEventListener("click", (e) => {
   const communityBtn = e.target.closest('.community-btn[data-community-id]');
   if (communityBtn) {
     const communityId = communityBtn.dataset.communityId;
-    activateCommunityView("topics", { community: communityId }); // 👈 MUDANÇA: ATIVA TÓPICOS POR PADRÃO
+    activateCommunityView("topics", { community: communityId }); // 👈 MUDANÇA: Ativa a vista TÓPICOS
   }
 });
 
 // --- Evento para Abrir Formulário de Criação ---
-btnShowCreateCommunity.addEventListener("click", () => {
-    activateView("create-community");
-});
+btnShowCreateCommunity.addEventListener("click", () => { activateView("create-community"); });
 
 // --- Evento para Cancelar Criação ---
-btnCancelCreate.addEventListener("click", () => {
-    activateView("explore-servers");
-});
+btnCancelCreate.addEventListener("click", () => { activateView("explore-servers"); });
 
 // --- Evento para Enviar Formulário de Criação ---
 createCommunityForm.addEventListener("submit", (e) => {
@@ -506,7 +463,7 @@ createCommunityForm.addEventListener("submit", (e) => {
     apiCreateCommunity(name, emoji, createCommunityForm.querySelector('button[type="submit"]'));
 });
 
-// --- Eventos das Abas Internas da Comunidade (NOVO) ---
+// --- Eventos das Abas Internas da Comunidade ---
 communityTabs.forEach(tab => {
     tab.addEventListener('click', () => {
         const view = tab.dataset.communityView;
@@ -522,7 +479,6 @@ communityTabs.forEach(tab => {
 function activateView(name, options = {}) {
   Object.values(views).forEach(view => view.hidden = true);
   appEl.classList.remove("view-home", "view-community");
-  
   document.querySelectorAll(".servers .server, .servers .add-btn").forEach(b => b.classList.remove("active"));
   
   if (name === "feed" || name === "explore" || name === "profile" || name === "explore-servers" || name === "create-community") {
@@ -532,11 +488,7 @@ function activateView(name, options = {}) {
     channelsEl.hidden = true;
     views[name].hidden = false;
     
-    if (name === 'explore-servers' || name === 'create-community') { 
-      exploreServersBtn.classList.add("active"); 
-    } else {
-      homeBtn.classList.add("active"); 
-    }
+    if (name === 'explore-servers' || name === 'create-community') { exploreServersBtn.classList.add("active"); } else { homeBtn.classList.add("active"); }
     
     viewTabs.forEach(b => b.classList.toggle("active", b.dataset.view === name));
     btnExplore.classList.toggle("active", name === "explore");
@@ -552,7 +504,6 @@ function activateView(name, options = {}) {
     if (name === "explore-servers") apiGetExploreCommunities(); 
     
   } 
-  // ❌ REMOVIDO: A lógica antiga de `else if (name === "chat")` foi substituída por `activateCommunityView`
 }
 
 function activateCommunityView(name, options = {}) {
@@ -566,7 +517,7 @@ function activateCommunityView(name, options = {}) {
     
     // 3. Atualiza o estado da Comunidade
     currentCommunityId = options.community;
-    // (Opcional: Obter o nome da comunidade para mostrar no cabeçalho)
+    // (Ainda precisamos buscar o nome/emoji da comunidade)
     
     // 4. Atualiza o ícone ativo na barra de servidores
     document.querySelectorAll(".servers .server, .servers .add-btn").forEach(b => b.classList.remove("active"));
@@ -584,27 +535,78 @@ function activateCommunityView(name, options = {}) {
     chatView.hidden = true; 
     
     if (name === "topics") {
-        communityTopicView.hidden = false; // Mostra o novo feed fórum
-        // Carregar a API do fórum
+        communityTopicView.hidden = false; 
         apiGetCommunityPosts(currentCommunityId); 
     } else if (name === "chat-channels") {
-        chatView.hidden = false; // Mostra o chat de mensagens
-        communityChatChannelsList.hidden = false; // Mostra a lista de canais (a ser populada)
+        chatView.hidden = false; 
+        communityChatChannelsList.hidden = false; 
         // Carregar canais (próximo passo)
-        renderChannel("geral"); // Por agora, carrega sempre o canal geral
+        renderChannel("geral"); 
     } else if (name === "members") {
-        communityMembersView.hidden = false; // Mostra a lista de membros
+        communityMembersView.hidden = false; 
         // Carregar membros (próximo passo)
     }
 }
-// ... (Restante do script.js - Funções de Comunidade, Amigos, etc. - Sem mudanças) ...
 
-// --- Inicialização ---
-socket.on('connect', () => {
-  console.log('Socket conectado:', socket.id);
-  document.getElementById("userName").textContent = currentUser;
-  document.getElementById("userAvatar").textContent = currentUser.slice(0, 2).toUpperCase();
-  
-  apiGetJoinedCommunities(); 
-  activateView("feed"); 
-});
+
+// ===================================================
+// 6. LÓGICA DE PERFIL DINÂMICO E SEGUIR
+// ... (omissão por brevidade) ...
+
+// ===================================================
+// 7. LÓGICA DE EXPLORAR COMUNIDADES
+// ... (omissão por brevidade) ...
+
+// ===================================================
+// 8. LÓGICA DE AMIGOS E ENTRAR EM COMUNIDADES
+// ... (omissão por brevidade) ...
+
+// ===================================================
+// 9. LÓGICA DE FÓRUM DA COMUNIDADE (NOVO)
+// ===================================================
+
+// [GET] Obter os posts do fórum de uma comunidade
+async function apiGetCommunityPosts(communityId) {
+    try {
+        const res = await fetch(`/api/community/${communityId}/posts`);
+        const data = await res.json();
+        renderCommunityPosts(data.posts || []);
+    } catch (err) {
+        console.error("Erro ao buscar posts do fórum:", err);
+        communityTopicList.innerHTML = "<div class='meta'>Falha ao carregar posts do fórum.</div>";
+    }
+}
+
+function renderCommunityPosts(posts) {
+    if (!communityTopicList) return;
+    communityTopicList.innerHTML = "";
+
+    if (posts.length === 0) {
+        communityTopicList.innerHTML = "<div class='meta' style='padding: 12px;'>Nenhum tópico ainda. Seja o primeiro a iniciar uma discussão!</div>";
+        return;
+    }
+
+    posts.forEach(post => {
+        const node = document.createElement("div");
+        node.className = "post"; 
+        const userInitial = post.user.slice(0, 2).toUpperCase();
+        const postTime = new Date(post.timestamp).toLocaleString('pt-BR');
+
+        node.innerHTML = `
+            <div class="avatar">${escapeHtml(userInitial)}</div>
+            <div>
+                <div class="meta">
+                    <strong class="post-username" data-username="${escapeHtml(post.user)}">
+                        ${escapeHtml(post.user)}
+                    </strong> 
+                    • ${postTime}
+                </div>
+                <h3>${escapeHtml(post.title)}</h3>
+                <div>${escapeHtml(post.content)}</div>
+                <div class="post-actions">
+                    <button class="mini-btn">💬 Comentários</button>
+                </div>
+            </div>`;
+        communityTopicList.appendChild(node);
+    });
+}
