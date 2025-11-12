@@ -151,16 +151,9 @@ function renderPosts(posts) {
       </div>`;
     postsEl.appendChild(node);
     
-    // ===============================================
-    // 👇 CARREGA OS COMENTÁRIOS PARA ESTE POST 👇
-    // ===============================================
     apiGetComments(post.id);
   });
 }
-
-// ===============================================
-// 👇 NOVAS FUNÇÕES DE COMENTÁRIOS ADICIONADAS AQUI 👇
-// ===============================================
 
 // --- Funções da API de Comentários ---
 
@@ -184,7 +177,6 @@ async function apiCreateComment(postId, text) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user: currentUser, text: text })
     });
-    // Atualiza (recarrega) os comentários desse post
     apiGetComments(postId); 
   } catch (err) {
     console.error("Falha ao criar comentário:", err);
@@ -194,22 +186,19 @@ async function apiCreateComment(postId, text) {
 // --- Renderização dos Comentários ---
 function renderComments(postId, comments) {
   const container = document.getElementById(`comments-for-${postId}`);
-  if (!container) return; // Se o post não está na tela, não faz nada
+  if (!container) return; 
   
   if (comments.length === 0) {
-    container.innerHTML = ""; // Limpa (remove o "carregando...")
+    container.innerHTML = ""; 
     return;
   }
   
-  // Transforma a lista de comentários em HTML
   container.innerHTML = comments.map(item => {
     return `<div class="meta"><strong>${escapeHtml(item.user)}</strong>: ${escapeHtml(item.text)}</div>`;
-  }).join(""); // Junta tudo em uma string só
+  }).join(""); 
 }
 
-// ===============================================
-// 👇 "OUVINTE" DE COMENTÁRIOS ADICIONADO AQUI 👇
-// ===============================================
+// --- Eventos do Feed (Likes e Comentários) ---
 postsEl.addEventListener("click", (e) => {
   // --- Lógica de Like ---
   const likeButton = e.target.closest('[data-like]');
@@ -227,9 +216,8 @@ postsEl.addEventListener("click", (e) => {
   const commentButton = e.target.closest('[data-comment]');
   if (commentButton) {
     const postId = commentButton.dataset.comment;
-    const text = prompt("Digite seu comentário:"); // Pede o comentário
+    const text = prompt("Digite seu comentário:"); 
     
-    // Se o usuário digitou algo (e não cancelou)
     if (text && text.trim()) {
       apiCreateComment(postId, text.trim());
     }
@@ -347,6 +335,9 @@ function renderChannel(name) {
   socket.emit('joinChannel', { channel: activeChannel, user: currentUser });
 }
 
+// ===============================================
+// 👇 FUNÇÃO DE MENSAGEM ATUALIZADA (UX) 👇
+// ===============================================
 function addMessageBubble({ user, timestamp, message }) {
   const item = document.createElement("div");
   item.className = "msg";
@@ -360,8 +351,16 @@ function addMessageBubble({ user, timestamp, message }) {
       <div>${escapeHtml(message)}</div>
     </div>
   `;
+  
+  // Verifica se o usuário está perto do final do chat
+  const isScrolledToBottom = chatMessagesEl.scrollHeight - chatMessagesEl.clientHeight <= chatMessagesEl.scrollTop + 100;
+
   chatMessagesEl.appendChild(item);
-  chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  
+  // Só rola para baixo se o usuário já estava no final
+  if (isScrolledToBottom) {
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  }
 }
 
 function sendChatMessage() {
@@ -390,12 +389,13 @@ channelButtons.forEach(c => c.addEventListener("click", () => renderChannel(c.ge
 socket.on('loadHistory', (messages) => {
   chatMessagesEl.innerHTML = ""; 
   messages.forEach(addMessageBubble);
-  chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  // QUANDO O HISTÓRICO CARREGA, SEMPRE VAI PARA O FINAL
+  chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight; 
 });
 
 socket.on('newMessage', (data) => {
   if (data.channel === activeChannel) { 
-     addMessageBubble(data);
+     addMessageBubble(data); // A função addMessageBubble agora tem a lógica de scroll
   }
 });
 
