@@ -10,9 +10,10 @@ if (!currentUser) {
   if (!currentUser || !currentUser.trim()) currentUser = "Anônimo";
   localStorage.setItem("agora:user", currentUser);
 }
-document.getElementById("userName").textContent = currentUser;
-const userInitial = currentUser.slice(0, 2).toUpperCase();
-document.getElementById("userAvatar").textContent = userInitial;
+// 👇 MUDANÇA: As 3 LINHAS SEGUINTES FORAM REMOVIDAS 👇
+// document.getElementById("userName").textContent = currentUser;
+// const userInitial = currentUser.slice(0, 2).toUpperCase();
+// document.getElementById("userAvatar").textContent = userInitial;
 
 // --- Estado da UI ---
 let activeChannel = "geral"; 
@@ -429,7 +430,7 @@ communityBtns.forEach(btn => {
   });
 });
 
-// --- Evento do Botão "+" (NOVO) ---
+// --- Evento do Botão "+" ---
 exploreServersBtn.addEventListener("click", () => {
   activateView("explore-servers");
 });
@@ -479,7 +480,7 @@ function activateView(name, options = {}) {
     if (name === "feed") apiGetPosts(); 
     if (name === "explore") apiGetExplorePosts();
     if (name === "profile") showDynamicProfile(viewedUsername); 
-    if (name === "explore-servers") apiGetExploreCommunities(); // 👈 NOVO
+    if (name === "explore-servers") apiGetExploreCommunities(); 
     
   } 
   // --- LÓGICA DE VISTA "COMUNIDADE" (Chat) ---
@@ -615,7 +616,9 @@ function escapeHtml(s) {
 // --- Inicialização ---
 socket.on('connect', () => {
   console.log('Socket conectado:', socket.id);
+  // 👇 MUDANÇA: Estas linhas foram movidas para aqui. Este é o local correto.
   document.getElementById("userName").textContent = currentUser;
   document.getElementById("userAvatar").textContent = currentUser.slice(0, 2).toUpperCase();
+  
   activateView("feed"); 
 });
