@@ -28,68 +28,41 @@ const pool = new Pool({
 async function setupDatabase() {
   const client = await pool.connect();
   try {
-    // Tabela de Mensagens (Chat)
+    // ... (todas as tuas tabelas - messages, posts, profiles, testimonials, comments, follows) ...
+    // Vou omitir as queries das tabelas aqui para ser breve, 
+    // mas elas continuam iguais ao ficheiro anterior.
+    // Garante que a tua tabela 'follows' está a ser criada.
     await client.query(`
       CREATE TABLE IF NOT EXISTS messages (
-        id SERIAL PRIMARY KEY,
-        channel TEXT NOT NULL,
-        "user" TEXT NOT NULL, 
-        message TEXT NOT NULL,
-        timestamp TIMESTAMPTZ DEFAULT NOW()
+        id SERIAL PRIMARY KEY, channel TEXT NOT NULL, "user" TEXT NOT NULL, 
+        message TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW()
       )
     `);
-    
-    // Tabela de Posts (Feed)
     await client.query(`
       CREATE TABLE IF NOT EXISTS posts (
-        id SERIAL PRIMARY KEY,
-        "user" TEXT NOT NULL,
-        text TEXT NOT NULL,
-        likes INT DEFAULT 0,
-        timestamp TIMESTAMPTZ DEFAULT NOW()
+        id SERIAL PRIMARY KEY, "user" TEXT NOT NULL, text TEXT NOT NULL,
+        likes INT DEFAULT 0, timestamp TIMESTAMPTZ DEFAULT NOW()
       )
     `);
-
-    // Tabela de Perfis (da Bio)
     await client.query(`
-      CREATE TABLE IF NOT EXISTS profiles (
-        "user" TEXT PRIMARY KEY,
-        bio TEXT
-      )
+      CREATE TABLE IF NOT EXISTS profiles ("user" TEXT PRIMARY KEY, bio TEXT)
     `);
-    
-    // Tabela de Depoimentos (Testimonials)
     await client.query(`
       CREATE TABLE IF NOT EXISTS testimonials (
-        id SERIAL PRIMARY KEY,
-        "from_user" TEXT NOT NULL,
-        "to_user" TEXT NOT NULL,
-        text TEXT NOT NULL,
-        timestamp TIMESTAMPTZ DEFAULT NOW()
+        id SERIAL PRIMARY KEY, "from_user" TEXT NOT NULL, "to_user" TEXT NOT NULL,
+        text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW()
       )
     `);
-    
-    // Tabela de Comentários
     await client.query(`
       CREATE TABLE IF NOT EXISTS comments (
-        id SERIAL PRIMARY KEY,
-        post_id INT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-        "user" TEXT NOT NULL,
-        text TEXT NOT NULL,
-        timestamp TIMESTAMPTZ DEFAULT NOW()
+        id SERIAL PRIMARY KEY, post_id INT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        "user" TEXT NOT NULL, text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW()
       )
     `);
-
-    // ===============================================
-    // 👇 NOVA TABELA 'FOLLOWS' ADICIONADA AQUI 👇
-    // ===============================================
     await client.query(`
       CREATE TABLE IF NOT EXISTS follows (
-        id SERIAL PRIMARY KEY,
-        follower_user TEXT NOT NULL, -- Quem segue
-        following_user TEXT NOT NULL, -- Quem está a ser seguido
-        timestamp TIMESTAMPTZ DEFAULT NOW(),
-        UNIQUE(follower_user, following_user) -- Impede seguir a mesma pessoa duas vezes
+        id SERIAL PRIMARY KEY, follower_user TEXT NOT NULL, following_user TEXT NOT NULL,
+        timestamp TIMESTAMPTZ DEFAULT NOW(), UNIQUE(follower_user, following_user)
       )
     `);
     
@@ -113,13 +86,30 @@ app.get('/', (req, res) => {
 
 // --- API (Parte "Feed") ---
 
-// [GET] Rota para LER todos os posts do Feed
+// ===============================================
+// 👇 ESTA ROTA FOI ATUALIZADA (PASSO 4) 👇
+// ===============================================
+// [GET] Rota para LER o feed personalizado
 app.get('/api/posts', async (req, res) => {
+  const { user } = req.query; // ex: /api/posts?user=Alexandre
+  
+  if (!user) {
+    return res.status(400).json({ error: 'Utilizador não fornecido' });
+  }
+
   try {
-    // POR ENQUANTO, esta rota ainda mostra TODOS os posts.
-    // Vamos alterá-la no Passo 4.
+    // Esta consulta SQL agora é poderosa:
+    // 1. Seleciona os posts de toda a gente que o 'user' segue (da tabela 'follows')
+    // 2. ... OU ...
+    // 3. Seleciona os posts do próprio 'user'
+    // 4. Ordena por mais recente e limita a 30.
     const result = await pool.query(
-      `SELECT * FROM posts ORDER BY timestamp DESC LIMIT 30`
+      `SELECT p.* FROM posts p
+       LEFT JOIN follows f ON p."user" = f.following_user
+       WHERE f.follower_user = $1 OR p."user" = $1
+       ORDER BY p.timestamp DESC
+       LIMIT 30`,
+      [user]
     );
     res.json({ posts: result.rows });
   } catch (err) {
@@ -289,21 +279,14 @@ app.post('/api/posts/:id/comments', async (req, res) => {
   }
 });
 
-// ===============================================
-// 👇 NOVAS ROTAS DE "SEGUIR" (FOLLOW) AQUI 👇
-// ===============================================
 
-// [GET] Verifica se o utilizador X segue o utilizador Y
+// --- API (Parte "Seguir") ---
 app.get('/api/isfollowing/:username', async (req, res) => {
-  // :username é o *perfil que estamos a ver* (following_user)
-  // O utilizador logado (follower_user) vem no body
-  const { follower } = req.query; // ex: /api/isfollowing/chico?follower=Alexandre
+  const { follower } = req.query;
   const { username } = req.params;
-
   if (!follower || !username) {
     return res.status(400).json({ error: 'Faltam parâmetros' });
   }
-  
   try {
     const result = await pool.query(
       `SELECT 1 FROM follows WHERE follower_user = $1 AND following_user = $2`,
@@ -316,9 +299,8 @@ app.get('/api/isfollowing/:username', async (req, res) => {
   }
 });
 
-// [POST] Seguir um utilizador
 app.post('/api/follow', async (req, res) => {
-  const { follower, following } = req.body; // { follower: "Alexandre", following: "chico" }
+  const { follower, following } = req.body; 
   if (!follower || !following) {
     return res.status(400).json({ error: 'Faltam parâmetros' });
   }
@@ -334,7 +316,6 @@ app.post('/api/follow', async (req, res) => {
   }
 });
 
-// [POST] Deixar de seguir um utilizador
 app.post('/api/unfollow', async (req, res) => {
   const { follower, following } = req.body;
   if (!follower || !following) {
@@ -355,9 +336,9 @@ app.post('/api/unfollow', async (req, res) => {
 
 // --- Lógica do Socket.IO (Parte "Discord") ---
 io.on('connection', (socket) => {
+  // ... (toda a tua lógica do socket.io, que está correta e não muda) ...
   console.log(`Um utilizador conectou-se: ${socket.id}`);
 
-  // 1. OUVIR QUANDO O UTILIZADOR MUDA DE CANAL
   socket.on('joinChannel', async (data) => {
     const channelName = (typeof data === 'object' && data.channel) ? data.channel : data;
     if (!channelName || typeof channelName !== 'string') {
@@ -383,7 +364,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 2. OUVIR QUANDO O UTILIZADOR ENVIA UMA MENSAGEM
   socket.on('sendMessage', async (data) => {
     const { channel, user, message } = data;
     const timestamp = new Date();
@@ -402,7 +382,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 3. OUVIR QUANDO O UTILIZADOR SE DESCONECTA
   socket.on('disconnect', () => {
     console.log(`Utilizador desconectou-se: ${socket.id}`);
   });

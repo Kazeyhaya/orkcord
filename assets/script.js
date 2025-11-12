@@ -63,7 +63,11 @@ const socket = io();
 // --- Funções da API do Feed ---
 async function apiGetPosts() {
   try {
-    const response = await fetch('/api/posts');
+    // ===============================================
+    // 👇 ESTA LINHA FOI ATUALIZADA (PASSO 4) 👇
+    // ===============================================
+    // Agora enviamos o 'currentUser' para o backend saber qual feed mostrar
+    const response = await fetch(`/api/posts?user=${encodeURIComponent(currentUser)}`);
     if (!response.ok) return;
     const data = await response.json();
     renderPosts(data.posts || []);
@@ -114,7 +118,7 @@ async function apiUnlikePost(postId) {
 function renderPosts(posts) {
   if (!postsEl) return;
   if (posts.length === 0) {
-    postsEl.innerHTML = "<div class='meta' style='padding: 12px;'>Ainda não há posts. Seja o primeiro!</div>";
+    postsEl.innerHTML = "<div class='meta' style='padding: 12px;'>O seu feed está vazio. Siga alguém para ver os posts aqui!</div>";
     return;
   }
   
@@ -416,7 +420,7 @@ function activateView(name) {
 }
 
 // ===================================================
-// 6. LÓGICA DE PERFIL DINÂMICO E SEGUIR (MUDANÇAS!)
+// 6. LÓGICA DE PERFIL DINÂMICO E SEGUIR
 // ===================================================
 
 async function showDynamicProfile(username) {
@@ -438,7 +442,7 @@ async function showDynamicProfile(username) {
     editBioBtn.onclick = apiUpdateBio; // Liga à função de editar
     editBioBtn.disabled = false;
   } else {
-    // 👇 MUDANÇA: Verifica se já segue o utilizador
+    // Verifica se já segue o utilizador
     try {
       const res = await fetch(`/api/isfollowing/${encodeURIComponent(username)}?follower=${encodeURIComponent(currentUser)}`);
       const data = await res.json();
@@ -459,7 +463,7 @@ async function showDynamicProfile(username) {
   }
 }
 
-// 👇 NOVA FUNÇÃO: Seguir
+// Função: Seguir
 async function apiFollow(username) {
   editBioBtn.disabled = true;
   try {
@@ -478,7 +482,7 @@ async function apiFollow(username) {
   }
 }
 
-// 👇 NOVA FUNÇÃO: Deixar de Seguir
+// Função: Deixar de Seguir
 async function apiUnfollow(username) {
   editBioBtn.disabled = true;
   try {
