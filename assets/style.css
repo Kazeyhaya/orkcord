@@ -81,28 +81,25 @@ a{color:inherit;text-decoration:none}
 .channel.active,.channel:hover{background:rgba(255,255,255,.06);color:#fff}
 .hash{opacity:.7}
 
-/* ======================== */
-/* 👇 CORREÇÃO DO LAYOUT BUGADO AQUI 👇 */
-/* ======================== */
+/* Correção do Layout (Grid) */
 .app.view-feed .channels,
 .app.view-profile .channels {
   display: none;
 }
 .app.view-feed {
   grid-template-columns: 80px 1fr;
-  grid-template-rows: 64px 1fr 64px; /* <-- ESTA LINHA FALTAVA */
+  grid-template-rows: 64px 1fr 64px; /* <-- Correção da userbar */
   grid-template-areas: "servers header" "servers chat" "servers userbar";
 }
 .app.view-profile {
   grid-template-columns: 80px 1fr;
-  grid-template-rows: 64px 1fr 64px; /* <-- ESTA LINHA FALTAVA */
+  grid-template-rows: 64px 1fr 64px; /* <-- Correção da userbar */
   grid-template-areas: "servers header" "servers chat" "servers userbar";
 }
 .app.view-chat {
   grid-template-columns: 80px 280px 1fr;
   grid-template-areas: "servers header header" "servers channels chat" "servers userbar chat";
 }
-/* ======================== */
 
 /* Chat */
 .chat{grid-area: chat;background: var(--discord-dark);border:1px solid rgba(255,255,255,.06);border-radius: var(--radius);display:grid;grid-template-rows: 56px 1fr 74px;box-shadow: var(--shadow)}
@@ -111,7 +108,20 @@ a{color:inherit;text-decoration:none}
 .feed-top{display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.06);background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);border-top-left-radius: var(--radius);border-top-right-radius: var(--radius); min-height: 56px;}
 .composer-feed{display:flex;gap:10px;padding:12px;border-bottom:1px solid rgba(255,255,255,.06)}
 .composer-feed .input{min-height:44px}
-.posts{overflow:auto;padding:12px;display:flex;flex-direction:column;gap:12px}
+
+/* ======================== */
+/* 👇 CORREÇÃO DO SCROLL DO FEED AQUI 👇 */
+/* ======================== */
+.posts{
+  overflow:auto;
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  min-height: 0; /* <-- A NOVA LINHA MÁGICA */
+}
+/* ======================== */
+
 .post{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;display:grid;grid-template-columns:44px 1fr;gap:10px}
 .post .meta{margin:0 0 6px 0}
 .post-actions{display:flex;gap:8px;margin-top:8px}
