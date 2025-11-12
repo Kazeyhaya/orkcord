@@ -30,18 +30,7 @@ async function setupDatabase() {
     await client.query(`CREATE TABLE IF NOT EXISTS testimonials (id SERIAL PRIMARY KEY, "from_user" TEXT NOT NULL, "to_user" TEXT NOT NULL, text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS comments (id SERIAL PRIMARY KEY, post_id INT NOT NULL REFERENCES posts(id) ON DELETE CASCADE, "user" TEXT NOT NULL, text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS follows (id SERIAL PRIMARY KEY, follower_user TEXT NOT NULL, following_user TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW(), UNIQUE(follower_user, following_user))`);
-
-    // Tabela 'communities'
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS communities (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT,
-        emoji TEXT,
-        members INT DEFAULT 0,
-        timestamp TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
+    await client.query(`CREATE TABLE IF NOT EXISTS communities (id SERIAL PRIMARY KEY, name TEXT NOT NULL, description TEXT, emoji TEXT, members INT DEFAULT 0, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     
     console.log('Tabelas (incluindo "communities") verificadas/criadas.');
 
@@ -82,7 +71,8 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'agora.html')); 
 });
 
-// --- API (Parte "Feed") ---
+// --- API (Parte "Feed" e "Explorar Posts") ---
+// ... (rotas /api/posts, /api/posts/explore, /api/posts - POST, /like, /unlike - sem mudanças)
 app.get('/api/posts', async (req, res) => {
   const { user } = req.query; 
   if (!user) {
@@ -164,7 +154,8 @@ app.post('/api/posts/:id/unlike', async (req, res) => {
   }
 });
 
-// --- API (Perfil, Depoimentos, Comentários, Seguir) ---
+// --- API (Perfil, Depoimentos, Comentários) ---
+// ... (rotas /api/profile, /testimonials, /comments - sem mudanças) ...
 app.get('/api/profile/:username', async (req, res) => {
   try {
     const { username } = req.params;
@@ -263,6 +254,29 @@ app.post('/api/posts/:id/comments', async (req, res) => {
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
+
+// ===============================================
+// 👇 NOVA ROTA "SEGUINDO" (AMIGOS) AQUI 👇
+// ===============================================
+app.get('/api/following/:username', async (req, res) => {
+  const { username } = req.params; // Este é o 'follower_user'
+  try {
+    // Seleciona a lista de pessoas que 'username' segue
+    const result = await pool.query(
+      `SELECT following_user FROM follows WHERE follower_user = $1`,
+      [username]
+    );
+    // Devolve a lista de nomes
+    res.json({ following: result.rows.map(row => row.following_user) });
+  } catch (err) {
+    console.error('Erro ao buscar lista de "seguindo":', err);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+
+// --- API (Parte "Seguir") ---
+// ... (rotas /api/isfollowing, /follow, /unfollow - sem mudanças) ...
 app.get('/api/isfollowing/:username', async (req, res) => {
   const { follower } = req.query;
   const { username } = req.params;
@@ -313,7 +327,8 @@ app.post('/api/unfollow', async (req, res) => {
   }
 });
 
-// API "EXPLORAR COMUNIDADES"
+// --- API (Explorar Comunidades) ---
+// ... (rota /api/communities/explore - sem mudanças) ...
 app.get('/api/communities/explore', async (req, res) => {
   try {
     const result = await pool.query(
@@ -326,8 +341,8 @@ app.get('/api/communities/explore', async (req, res) => {
   }
 });
 
-
 // --- Lógica do Socket.IO (Chat) ---
+// ... (sem mudanças) ...
 io.on('connection', (socket) => {
   console.log(`Um utilizador conectou-se: ${socket.id}`);
   socket.on('joinChannel', async (data) => {
@@ -377,7 +392,7 @@ io.on('connection', (socket) => {
 
 // --- Iniciar o Servidor ---
 setupDatabase()
-  .then(() => seedDatabase()) // Chama o 'seedDatabase'
+  .then(() => seedDatabase()) 
   .then(() => {
     server.listen(port, () => {
       console.log(`Agora a rodar na porta ${port}`);

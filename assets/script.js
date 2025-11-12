@@ -43,6 +43,7 @@ const profileNameEl = document.getElementById("profileName");
 const profileBioEl = document.getElementById("profileBio");
 const editBioBtn = document.getElementById("editBioBtn");
 const userbarMeBtn = document.getElementById("userbar-me"); 
+const friendsContainer = document.getElementById("friends"); // 👈 NOVO
 
 // --- Referências dos Depoimentos ---
 const testimonialsEl = document.getElementById("testimonials");
@@ -79,7 +80,6 @@ const socket = io();
 // 2. LÓGICA DO FEED (API / "Agora")
 // ===================================================
 
-// --- Funções da API do Feed (Pessoal) ---
 async function apiGetPosts() {
   try {
     const response = await fetch(`/api/posts?user=${encodeURIComponent(currentUser)}`);
@@ -91,8 +91,6 @@ async function apiGetPosts() {
     postsEl.innerHTML = "<div class='meta'>Falha ao carregar posts.</div>";
   }
 }
-
-// --- Funções da API do Feed (Explorar) ---
 async function apiGetExplorePosts() {
   try {
     const response = await fetch('/api/posts/explore'); 
@@ -104,7 +102,6 @@ async function apiGetExplorePosts() {
     explorePostsEl.innerHTML = "<div class='meta'>Falha ao carregar posts.</div>";
   }
 }
-
 async function apiCreatePost() {
   const text = feedInput.value.trim();
   if (!text) return;
@@ -122,29 +119,20 @@ async function apiCreatePost() {
   }
   feedSend.disabled = false;
 }
-
-// 👇 MUDANÇA: 'apiLikePost' já não recarrega o feed 👇
 async function apiLikePost(postId) {
   try {
     await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
-    // NÃO recarrega o feed
   } catch (err) {
     console.error("Falha ao dar like:", err);
-    // (Numa versão futura, podemos reverter a UI aqui)
   }
 } 
-
-// 👇 MUDANÇA: 'apiUnlikePost' re-adicionada 👇
 async function apiUnlikePost(postId) {
   try {
     await fetch(`/api/posts/${postId}/unlike`, { method: 'POST' });
-    // NÃO recarrega o feed
   } catch (err) {
     console.error("Falha ao descurtir:", err);
   }
 }
-
-// --- Renderização do Feed (Pessoal) ---
 function renderPosts(posts) {
   if (!postsEl) return;
   if (posts.length === 0) {
@@ -153,8 +141,6 @@ function renderPosts(posts) {
   }
   renderPostList(postsEl, posts);
 }
-
-// --- Renderização do Feed (Explorar) ---
 function renderExplorePosts(posts) {
   if (!explorePostsEl) return;
   if (posts.length === 0) {
@@ -163,8 +149,6 @@ function renderExplorePosts(posts) {
   }
   renderPostList(explorePostsEl, posts);
 }
-
-// --- Renderização Genérica ---
 function renderPostList(containerElement, posts) {
   containerElement.innerHTML = ""; 
   posts.forEach(post => {
@@ -172,8 +156,7 @@ function renderPostList(containerElement, posts) {
     node.className = "post";
     const postUserInitial = (post.user || "?").slice(0, 2).toUpperCase();
     const postTime = new Date(post.timestamp).toLocaleString('pt-BR');
-    // const isLiked = post.likes > 0; // ❌ REMOVIDA Lógica 'isLiked'
-
+    
     node.innerHTML = `
       <div class="avatar">${escapeHtml(postUserInitial)}</div>
       <div>
@@ -198,9 +181,6 @@ function renderPostList(containerElement, posts) {
     apiGetComments(post.id);
   });
 }
-
-
-// --- Funções da API de Comentários ---
 async function apiGetComments(postId) {
   try {
     const res = await fetch(`/api/posts/${postId}/comments`);
@@ -296,7 +276,7 @@ async function apiCreateTestimonial() {
 function renderTestimonials(testimonials) {
   if (!testimonialsEl) return;
   if (testimonials.length === 0) {
-    testimonialsEl.innerHTML = "<div class='meta'>Seja o primeiro a deixar um depoimento!</div>";
+    testimonialsEl.innerHTML = "<div class='meta'>Nenhum depoimento ainda.</div>";
     return;
   }
   testimonialsEl.innerHTML = ""; 
@@ -311,6 +291,7 @@ function renderTestimonials(testimonials) {
 // ===================================================
 // 3. LÓGICA DO CHAT (Socket.IO / "Agora")
 // ===================================================
+
 function renderChannel(name) {
   activeChannel = name; 
   chatMessagesEl.innerHTML = ""; 
@@ -374,7 +355,6 @@ chatInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat
 channelButtons.forEach(c => c.addEventListener("click", () => renderChannel(c.getAttribute("data-channel"))));
 
 // --- Eventos do Feed (Likes, Comentários e Ver Perfil) ---
-// 👇 MUDANÇA: Lógica de Like/Unlike adicionada aqui 👇
 function handlePostClick(e) {
   const userLink = e.target.closest('.post-username[data-username]');
   if (userLink) {
@@ -382,29 +362,22 @@ function handlePostClick(e) {
     activateView("profile"); 
     return;
   }
-
-  // --- LÓGICA DE LIKE/UNLIKE CORRIGIDA ---
   const likeButton = e.target.closest('[data-like]');
   if (likeButton) {
     const postId = likeButton.dataset.like; 
-    
-    // Atualização otimista da UI
     let currentLikes = parseInt(likeButton.textContent.trim().split(' ')[1]);
     
     if (likeButton.classList.contains('liked')) {
-      // --- DEIXAR DE GOSTAR ---
-      apiUnlikePost(postId); // Chama a API de unlike
+      apiUnlikePost(postId); 
       likeButton.classList.remove('liked');
       likeButton.innerHTML = `❤ ${currentLikes - 1}`;
     } else {
-      // --- GOSTAR ---
-      apiLikePost(postId); // Chama a API de like
+      apiLikePost(postId); 
       likeButton.classList.add('liked');
       likeButton.innerHTML = `❤ ${currentLikes + 1}`;
     }
     return;
   }
-  
   const commentButton = e.target.closest('[data-comment]');
   if (commentButton) {
     const postId = commentButton.dataset.comment;
@@ -417,7 +390,6 @@ function handlePostClick(e) {
 }
 postsEl.addEventListener("click", handlePostClick);
 explorePostsEl.addEventListener("click", handlePostClick); 
-
 
 // --- Eventos dos Botões do Feed (Publicar e Refresh) ---
 feedSend.addEventListener("click", apiCreatePost);
@@ -446,17 +418,23 @@ userbarMeBtn.addEventListener("click", () => {
 homeBtn.addEventListener("click", () => {
   activateView("feed"); 
 });
-
 communityBtns.forEach(btn => {
   btn.addEventListener("click", () => {
     const communityId = btn.dataset.communityId;
     activateView("chat", { community: communityId }); 
   });
 });
-
-// --- Evento do Botão "+" ---
 exploreServersBtn.addEventListener("click", () => {
   activateView("explore-servers");
+});
+
+// --- Evento de clique no cartão de Amigo (NOVO) ---
+friendsContainer.addEventListener("click", (e) => {
+  const friendLink = e.target.closest('.friend-card-name[data-username]');
+  if (friendLink) {
+    viewedUsername = friendLink.dataset.username;
+    activateView("profile"); // Recarrega a vista do perfil com o amigo
+  }
 });
 
 
@@ -516,10 +494,17 @@ function activateView(name, options = {}) {
 
 async function showDynamicProfile(username) {
   if (!username) return;
+  
+  // 1. Carrega dados em paralelo
   apiGetProfile(username);
   apiGetTestimonials(username);
+  apiGetFollowing(username); // 👈 NOVO: Chama a função de amigos
+
+  // 2. Atualiza a UI do Perfil imediatamente
   profileNameEl.textContent = username;
   profileAvatarEl.textContent = username.slice(0, 2).toUpperCase();
+  
+  // 3. Decide qual botão mostrar (Editar vs. Seguir)
   editBioBtn.disabled = true; 
   if (username === currentUser) {
     editBioBtn.textContent = "Editar bio";
@@ -554,6 +539,7 @@ async function apiFollow(username) {
     editBioBtn.textContent = "Deixar de Seguir";
     editBioBtn.onclick = () => apiUnfollow(username);
     editBioBtn.disabled = false;
+    apiGetFollowing(viewedUsername); // Atualiza a lista de amigos
   } catch (err) {
     console.error("Erro ao seguir:", err);
     editBioBtn.disabled = false;
@@ -570,6 +556,7 @@ async function apiUnfollow(username) {
     editBioBtn.textContent = "Seguir";
     editBioBtn.onclick = () => apiFollow(username);
     editBioBtn.disabled = false;
+    apiGetFollowing(viewedUsername); // Atualiza a lista de amigos
   } catch (err) {
     console.error("Erro ao deixar de seguir:", err);
     editBioBtn.disabled = false;
@@ -594,7 +581,7 @@ async function apiGetExploreCommunities() {
 
 function renderExploreCommunities(communities) {
   if (!communityListContainer) return;
-  communityListContainer.innerHTML = ""; // Limpa a lista
+  communityListContainer.innerHTML = ""; 
 
   if (communities.length === 0) {
     communityListContainer.innerHTML = "<div class='meta'>Nenhuma comunidade pública encontrada.</div>";
@@ -613,6 +600,46 @@ function renderExploreCommunities(communities) {
       <button class="join-btn" data-community-id="${community.id}">Entrar</button>
     `;
     communityListContainer.appendChild(node);
+  });
+}
+
+// ===================================================
+// 8. LÓGICA DE AMIGOS (SEGUINDO) (NOVO)
+// ===================================================
+
+async function apiGetFollowing(username) {
+  try {
+    const res = await fetch(`/api/following/${encodeURIComponent(username)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    renderFollowing(data.following || []);
+  } catch (err) {
+    console.error("Erro ao buscar lista de 'seguindo':", err);
+    friendsContainer.innerHTML = "<div class='meta'>Falha ao carregar amigos.</div>";
+  }
+}
+
+function renderFollowing(followingList) {
+  if (!friendsContainer) return;
+  friendsContainer.innerHTML = ""; // Limpa a lista
+
+  if (followingList.length === 0) {
+    friendsContainer.innerHTML = "<div class='meta'>Ainda não segue ninguém.</div>";
+    return;
+  }
+
+  followingList.forEach(username => {
+    const node = document.createElement("div");
+    node.className = "friend-card";
+    const userInitial = username.slice(0, 2).toUpperCase();
+
+    node.innerHTML = `
+      <div class="avatar">${escapeHtml(userInitial)}</div>
+      <strong class="friend-card-name" data-username="${escapeHtml(username)}">
+        ${escapeHtml(username)}
+      </strong>
+    `;
+    friendsContainer.appendChild(node);
   });
 }
 
