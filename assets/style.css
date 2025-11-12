@@ -387,3 +387,10 @@ a{color:inherit;text-decoration:none}
   }
   .header-actions{display:none} /* Esconde abas em ecrã pequeno */
 }
+/* --- Aprimoramento: Logo de Cabeçalho Clicável --- */
+#header-home-btn {
+  cursor: pointer;
+}
+#header-home-btn:hover {
+  opacity: 0.8;
+}

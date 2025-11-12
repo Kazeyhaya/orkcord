@@ -70,6 +70,7 @@ const channelsEl = document.querySelector(".channels");
 const viewTabs = document.querySelectorAll(".view-tabs .pill"); 
 const serverBtns = document.querySelectorAll(".servers .server"); 
 const homeBtn = document.getElementById("home-btn"); 
+const headerHomeBtn = document.getElementById("header-home-btn"); // 👈 NOVO
 
 // --- Objeto de Vistas ---
 const views = {
@@ -423,6 +424,17 @@ userbarMeBtn.addEventListener("click", () => {
   activateView("profile"); 
 });
 
+// --- Evento do Botão Home (NOVO) ---
+headerHomeBtn.addEventListener("click", () => { // 👈 NOVA LIGAÇÃO
+  activateView("feed"); 
+});
+
+
+// --- Eventos dos Servidores ---
+homeBtn.addEventListener("click", () => {
+  activateView("feed"); 
+});
+
 // --- Evento do Botão "+" ---
 exploreServersBtn.addEventListener("click", () => {
   activateView("explore-servers");
@@ -455,17 +467,17 @@ joinedServersList.addEventListener("click", (e) => {
   }
 });
 
-// --- Evento para Abrir Formulário de Criação (NOVO) ---
+// --- Evento para Abrir Formulário de Criação ---
 btnShowCreateCommunity.addEventListener("click", () => {
     activateView("create-community");
 });
 
-// --- Evento para Cancelar Criação (NOVO) ---
+// --- Evento para Cancelar Criação ---
 btnCancelCreate.addEventListener("click", () => {
     activateView("explore-servers");
 });
 
-// --- Evento para Enviar Formulário de Criação (NOVO) ---
+// --- Evento para Enviar Formulário de Criação ---
 createCommunityForm.addEventListener("submit", (e) => {
     e.preventDefault();
     const nameInput = document.getElementById("community-name");
@@ -511,7 +523,7 @@ function activateView(name, options = {}) {
     }
 
     if (name === "feed") apiGetPosts(); 
-    if (name === "explore") apiGetExplorePosts();
+    if (name === "explore") apiGetExplorePosts(); 
     if (name === "profile") showDynamicProfile(viewedUsername); 
     if (name === "explore-servers") apiGetExploreCommunities(); 
     
