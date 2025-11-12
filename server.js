@@ -24,7 +24,6 @@ const pool = new Pool({
 async function setupDatabase() {
   const client = await pool.connect();
   try {
-    // ... (tabelas messages, posts, profiles, testimonials, comments, follows - sem mudanças)
     await client.query(`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, channel TEXT NOT NULL, "user" TEXT NOT NULL, message TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS posts (id SERIAL PRIMARY KEY, "user" TEXT NOT NULL, text TEXT NOT NULL, likes INT DEFAULT 0, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS profiles ("user" TEXT PRIMARY KEY, bio TEXT)`);
@@ -32,15 +31,13 @@ async function setupDatabase() {
     await client.query(`CREATE TABLE IF NOT EXISTS comments (id SERIAL PRIMARY KEY, post_id INT NOT NULL REFERENCES posts(id) ON DELETE CASCADE, "user" TEXT NOT NULL, text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS follows (id SERIAL PRIMARY KEY, follower_user TEXT NOT NULL, following_user TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW(), UNIQUE(follower_user, following_user))`);
 
-    // ===============================================
-    // 👇 NOVA TABELA 'COMMUNITIES' ADICIONADA AQUI 👇
-    // ===============================================
+    // Tabela 'communities'
     await client.query(`
       CREATE TABLE IF NOT EXISTS communities (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
-        emoji TEXT, -- Por agora, vamos usar um emoji como "ícone"
+        emoji TEXT,
         members INT DEFAULT 0,
         timestamp TIMESTAMPTZ DEFAULT NOW()
       )
@@ -55,17 +52,13 @@ async function setupDatabase() {
   }
 }
 
-// ===============================================
-// 👇 NOVA FUNÇÃO PARA INSERIR DADOS FALSOS 👇
-// ===============================================
+// Função para inserir dados falsos
 async function seedDatabase() {
   const client = await pool.connect();
   try {
-    // Verifica se já existem comunidades
     const res = await client.query('SELECT 1 FROM communities LIMIT 1');
     if (res.rows.length === 0) {
       console.log('Populando o banco de dados com comunidades de teste...');
-      // Insere comunidades de teste
       await client.query(`
         INSERT INTO communities (name, description, emoji, members) VALUES
         ('Tecnologia 💻', 'A comunidade oficial para falar de hardware, software e programação.', '💻', 1),
@@ -81,7 +74,6 @@ async function seedDatabase() {
   }
 }
 
-
 // ===================================================
 // ROTAS DO SERVIDOR
 // ===================================================
@@ -90,8 +82,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'agora.html')); 
 });
 
-// --- API (Parte "Feed" e "Explorar Posts") ---
-// ... (rotas /api/posts, /api/posts/explore, /api/posts - POST, /like, /unlike - sem mudanças)
+// --- API (Parte "Feed") ---
 app.get('/api/posts', async (req, res) => {
   const { user } = req.query; 
   if (!user) {
@@ -174,7 +165,6 @@ app.post('/api/posts/:id/unlike', async (req, res) => {
 });
 
 // --- API (Perfil, Depoimentos, Comentários, Seguir) ---
-// ... (rotas /api/profile, /testimonials, /comments, /follow, /unfollow - sem mudanças) ...
 app.get('/api/profile/:username', async (req, res) => {
   try {
     const { username } = req.params;
@@ -323,9 +313,7 @@ app.post('/api/unfollow', async (req, res) => {
   }
 });
 
-// ===============================================
-// 👇 NOVA ROTA "EXPLORAR COMUNIDADES" AQUI 👇
-// ===============================================
+// API "EXPLORAR COMUNIDADES"
 app.get('/api/communities/explore', async (req, res) => {
   try {
     const result = await pool.query(
@@ -340,7 +328,6 @@ app.get('/api/communities/explore', async (req, res) => {
 
 
 // --- Lógica do Socket.IO (Chat) ---
-// ... (sem mudanças) ...
 io.on('connection', (socket) => {
   console.log(`Um utilizador conectou-se: ${socket.id}`);
   socket.on('joinChannel', async (data) => {
@@ -390,7 +377,7 @@ io.on('connection', (socket) => {
 
 // --- Iniciar o Servidor ---
 setupDatabase()
-  .then(() => seedDatabase()) // 👈 MUDANÇA: Chama o 'seedDatabase' depois do 'setup'
+  .then(() => seedDatabase()) // Chama o 'seedDatabase'
   .then(() => {
     server.listen(port, () => {
       console.log(`Agora a rodar na porta ${port}`);

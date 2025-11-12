@@ -77,7 +77,6 @@ a{color:inherit;text-decoration:none}
 .hash{opacity:.7}
 
 /* Layout (Grid) */
-
 /* Modo "Home" (Feed, Explorar, Perfil, Explorar Servidores) */
 .app.view-home {
   grid-template-columns: 80px 1fr;
@@ -94,7 +93,6 @@ a{color:inherit;text-decoration:none}
 .app.view-home .chat {
   display: none;
 }
-
 /* Modo "Comunidade" (Chat) */
 .app.view-community {
   grid-template-columns: 80px 280px 1fr;
@@ -113,7 +111,6 @@ a{color:inherit;text-decoration:none}
   display: none;
 }
 
-
 /* Chat */
 .chat{grid-area: chat;background: var(--discord-dark);border:1px solid rgba(255,255,255,.06);border-radius: var(--radius);display:grid;grid-template-rows: 56px 1fr 74px;box-shadow: var(--shadow)}
 /* Feed */
@@ -129,7 +126,6 @@ a{color:inherit;text-decoration:none}
 #view-explore.feed {
   grid-template-rows: 56px 1fr; 
 }
-
 .feed-top{display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.06);background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);border-top-left-radius: var(--radius);border-top-right-radius: var(--radius); min-height: 56px;}
 .composer-feed{display:flex;gap:10px;padding:12px;border-bottom:1px solid rgba(255,255,255,.06)}
 .composer-feed .input{min-height:44px}
@@ -148,7 +144,6 @@ a{color:inherit;text-decoration:none}
 .mini-btn:hover{background:rgba(255,255,255,.1)}
 .mini-btn.liked{ background: var(--orkut-pink); border-color: var(--orkut-pink); color: #fff; }
 .comments{margin-top:8px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px;display:flex;flex-direction:column;gap:6px}
-
 /* Perfil */
 .profile{
   background: var(--discord-dark);
@@ -157,7 +152,7 @@ a{color:inherit;text-decoration:none}
   box-shadow: var(--shadow);
   display:grid;
   grid-template-rows:56px 1fr;
-  min-height: 0; /* Correção de scroll */
+  min-height: 0; 
 }
 .profile-top{display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.06);background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);border-top-left-radius: var(--radius);border-top-right-radius: var(--radius); min-height: 56px;}
 .profile-body{overflow:auto;padding:14px;display:grid;grid-template-columns:300px 1fr;gap:14px}
@@ -212,9 +207,7 @@ a{color:inherit;text-decoration:none}
 .userbar .me.clickable:hover { background: rgba(255, 255, 255, .05); }
 
 
-/* =============================================== */
-/* 👇 NOVOS ESTILOS "EXPLORAR SERVIDORES" AQUI 👇 */
-/* =============================================== */
+/* Estilos "EXPLORAR SERVIDORES" */
 .explore-servers {
   background: var(--discord-dark);
   border:1px solid rgba(255,255,255,.06);

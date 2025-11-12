@@ -10,10 +10,7 @@ if (!currentUser) {
   if (!currentUser || !currentUser.trim()) currentUser = "Anônimo";
   localStorage.setItem("agora:user", currentUser);
 }
-// 👇 MUDANÇA: As 3 LINHAS SEGUINTES FORAM REMOVIDAS 👇
-// document.getElementById("userName").textContent = currentUser;
-// const userInitial = currentUser.slice(0, 2).toUpperCase();
-// document.getElementById("userAvatar").textContent = userInitial;
+// As linhas que davam erro foram movidas para o final, em socket.on('connect')
 
 // --- Estado da UI ---
 let activeChannel = "geral"; 
@@ -53,7 +50,7 @@ const testimonialsEl = document.getElementById("testimonials");
 const testimonialInput = document.getElementById("testimonialInput");
 const testimonialSend = document.getElementById("testimonialSend");
 
-// --- Referências de Comunidades (NOVO) ---
+// --- Referências de Comunidades ---
 const exploreServersView = document.getElementById("view-explore-servers");
 const exploreServersBtn = document.getElementById("explore-servers-btn");
 const communityListContainer = document.getElementById("community-list-container");
@@ -67,13 +64,13 @@ const serverBtns = document.querySelectorAll(".servers .server");
 const homeBtn = document.getElementById("home-btn"); 
 const communityBtns = document.querySelectorAll(".community-btn"); 
 
-// --- Objeto de Vistas (NOVO) ---
+// --- Objeto de Vistas ---
 const views = {
   feed: feedView,
   chat: chatView,
   profile: profileView,
   explore: exploreView,
-  "explore-servers": exploreServersView // Adicionada nova vista
+  "explore-servers": exploreServersView 
 };
 
 // --- Conexão Socket.IO (Só para o Chat) ---
@@ -83,7 +80,6 @@ const socket = io();
 // 2. LÓGICA DO FEED (API / "Agora")
 // ===================================================
 
-// --- Funções da API do Feed (Pessoal) ---
 async function apiGetPosts() {
   try {
     const response = await fetch(`/api/posts?user=${encodeURIComponent(currentUser)}`);
@@ -95,8 +91,6 @@ async function apiGetPosts() {
     postsEl.innerHTML = "<div class='meta'>Falha ao carregar posts.</div>";
   }
 }
-
-// --- Funções da API do Feed (Explorar) ---
 async function apiGetExplorePosts() {
   try {
     const response = await fetch('/api/posts/explore'); 
@@ -108,7 +102,6 @@ async function apiGetExplorePosts() {
     explorePostsEl.innerHTML = "<div class='meta'>Falha ao carregar posts.</div>";
   }
 }
-
 async function apiCreatePost() {
   const text = feedInput.value.trim();
   if (!text) return;
@@ -126,7 +119,6 @@ async function apiCreatePost() {
   }
   feedSend.disabled = false;
 }
-
 async function apiLikePost(postId) {
   try {
     await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
@@ -136,8 +128,6 @@ async function apiLikePost(postId) {
     console.error("Falha ao dar like:", err);
   }
 } 
-
-// --- Renderização do Feed (Pessoal) ---
 function renderPosts(posts) {
   if (!postsEl) return;
   if (posts.length === 0) {
@@ -146,8 +136,6 @@ function renderPosts(posts) {
   }
   renderPostList(postsEl, posts);
 }
-
-// --- Renderização do Feed (Explorar) ---
 function renderExplorePosts(posts) {
   if (!explorePostsEl) return;
   if (posts.length === 0) {
@@ -156,8 +144,6 @@ function renderExplorePosts(posts) {
   }
   renderPostList(explorePostsEl, posts);
 }
-
-// --- Renderização Genérica ---
 function renderPostList(containerElement, posts) {
   containerElement.innerHTML = ""; 
   posts.forEach(post => {
@@ -191,9 +177,6 @@ function renderPostList(containerElement, posts) {
     apiGetComments(post.id);
   });
 }
-
-
-// --- Funções da API de Comentários ---
 async function apiGetComments(postId) {
   try {
     const res = await fetch(`/api/posts/${postId}/comments`);
@@ -565,7 +548,7 @@ async function apiUnfollow(username) {
 }
 
 // ===================================================
-// 7. LÓGICA DE EXPLORAR COMUNIDADES (NOVO)
+// 7. LÓGICA DE EXPLORAR COMUNIDADES
 // ===================================================
 
 async function apiGetExploreCommunities() {
@@ -616,7 +599,7 @@ function escapeHtml(s) {
 // --- Inicialização ---
 socket.on('connect', () => {
   console.log('Socket conectado:', socket.id);
-  // 👇 MUDANÇA: Estas linhas foram movidas para aqui. Este é o local correto.
+  // 👇 CORREÇÃO: Movido para aqui. O HTML já existe.
   document.getElementById("userName").textContent = currentUser;
   document.getElementById("userAvatar").textContent = currentUser.slice(0, 2).toUpperCase();
   
