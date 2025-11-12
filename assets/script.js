@@ -10,7 +10,6 @@ if (!currentUser) {
   if (!currentUser || !currentUser.trim()) currentUser = "Anônimo";
   localStorage.setItem("agora:user", currentUser);
 }
-// As linhas que davam erro foram movidas para o final, em socket.on('connect')
 
 // --- Estado da UI ---
 let activeChannel = "geral"; 
@@ -80,6 +79,7 @@ const socket = io();
 // 2. LÓGICA DO FEED (API / "Agora")
 // ===================================================
 
+// --- Funções da API do Feed (Pessoal) ---
 async function apiGetPosts() {
   try {
     const response = await fetch(`/api/posts?user=${encodeURIComponent(currentUser)}`);
@@ -91,6 +91,8 @@ async function apiGetPosts() {
     postsEl.innerHTML = "<div class='meta'>Falha ao carregar posts.</div>";
   }
 }
+
+// --- Funções da API do Feed (Explorar) ---
 async function apiGetExplorePosts() {
   try {
     const response = await fetch('/api/posts/explore'); 
@@ -102,6 +104,7 @@ async function apiGetExplorePosts() {
     explorePostsEl.innerHTML = "<div class='meta'>Falha ao carregar posts.</div>";
   }
 }
+
 async function apiCreatePost() {
   const text = feedInput.value.trim();
   if (!text) return;
@@ -119,15 +122,29 @@ async function apiCreatePost() {
   }
   feedSend.disabled = false;
 }
+
+// 👇 MUDANÇA: 'apiLikePost' já não recarrega o feed 👇
 async function apiLikePost(postId) {
   try {
     await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
-    if (!feedView.hidden) apiGetPosts(); 
-    if (!exploreView.hidden) apiGetExplorePosts();
+    // NÃO recarrega o feed
   } catch (err) {
     console.error("Falha ao dar like:", err);
+    // (Numa versão futura, podemos reverter a UI aqui)
   }
 } 
+
+// 👇 MUDANÇA: 'apiUnlikePost' re-adicionada 👇
+async function apiUnlikePost(postId) {
+  try {
+    await fetch(`/api/posts/${postId}/unlike`, { method: 'POST' });
+    // NÃO recarrega o feed
+  } catch (err) {
+    console.error("Falha ao descurtir:", err);
+  }
+}
+
+// --- Renderização do Feed (Pessoal) ---
 function renderPosts(posts) {
   if (!postsEl) return;
   if (posts.length === 0) {
@@ -136,6 +153,8 @@ function renderPosts(posts) {
   }
   renderPostList(postsEl, posts);
 }
+
+// --- Renderização do Feed (Explorar) ---
 function renderExplorePosts(posts) {
   if (!explorePostsEl) return;
   if (posts.length === 0) {
@@ -144,6 +163,8 @@ function renderExplorePosts(posts) {
   }
   renderPostList(explorePostsEl, posts);
 }
+
+// --- Renderização Genérica ---
 function renderPostList(containerElement, posts) {
   containerElement.innerHTML = ""; 
   posts.forEach(post => {
@@ -151,7 +172,7 @@ function renderPostList(containerElement, posts) {
     node.className = "post";
     const postUserInitial = (post.user || "?").slice(0, 2).toUpperCase();
     const postTime = new Date(post.timestamp).toLocaleString('pt-BR');
-    const isLiked = post.likes > 0; 
+    // const isLiked = post.likes > 0; // ❌ REMOVIDA Lógica 'isLiked'
 
     node.innerHTML = `
       <div class="avatar">${escapeHtml(postUserInitial)}</div>
@@ -164,7 +185,7 @@ function renderPostList(containerElement, posts) {
         </div>
         <div>${escapeHtml(post.text)}</div>
         <div class="post-actions">
-          <button class="mini-btn ${isLiked ? 'liked' : ''}" data-like="${post.id}">
+          <button class="mini-btn" data-like="${post.id}">
             ❤ ${post.likes || 0}
           </button>
           <button class="mini-btn" data-comment="${post.id}">Comentar</button>
@@ -177,6 +198,9 @@ function renderPostList(containerElement, posts) {
     apiGetComments(post.id);
   });
 }
+
+
+// --- Funções da API de Comentários ---
 async function apiGetComments(postId) {
   try {
     const res = await fetch(`/api/posts/${postId}/comments`);
@@ -287,7 +311,6 @@ function renderTestimonials(testimonials) {
 // ===================================================
 // 3. LÓGICA DO CHAT (Socket.IO / "Agora")
 // ===================================================
-
 function renderChannel(name) {
   activeChannel = name; 
   chatMessagesEl.innerHTML = ""; 
@@ -351,6 +374,7 @@ chatInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat
 channelButtons.forEach(c => c.addEventListener("click", () => renderChannel(c.getAttribute("data-channel"))));
 
 // --- Eventos do Feed (Likes, Comentários e Ver Perfil) ---
+// 👇 MUDANÇA: Lógica de Like/Unlike adicionada aqui 👇
 function handlePostClick(e) {
   const userLink = e.target.closest('.post-username[data-username]');
   if (userLink) {
@@ -358,12 +382,29 @@ function handlePostClick(e) {
     activateView("profile"); 
     return;
   }
+
+  // --- LÓGICA DE LIKE/UNLIKE CORRIGIDA ---
   const likeButton = e.target.closest('[data-like]');
   if (likeButton) {
     const postId = likeButton.dataset.like; 
-    apiLikePost(postId); 
+    
+    // Atualização otimista da UI
+    let currentLikes = parseInt(likeButton.textContent.trim().split(' ')[1]);
+    
+    if (likeButton.classList.contains('liked')) {
+      // --- DEIXAR DE GOSTAR ---
+      apiUnlikePost(postId); // Chama a API de unlike
+      likeButton.classList.remove('liked');
+      likeButton.innerHTML = `❤ ${currentLikes - 1}`;
+    } else {
+      // --- GOSTAR ---
+      apiLikePost(postId); // Chama a API de like
+      likeButton.classList.add('liked');
+      likeButton.innerHTML = `❤ ${currentLikes + 1}`;
+    }
     return;
   }
+  
   const commentButton = e.target.closest('[data-comment]');
   if (commentButton) {
     const postId = commentButton.dataset.comment;
@@ -424,49 +465,37 @@ exploreServersBtn.addEventListener("click", () => {
 // ===================================================
 
 function activateView(name, options = {}) {
-  // 1. Esconde todas as vistas principais
   Object.values(views).forEach(view => view.hidden = true);
-  
-  // 2. Remove classes de estado do app
   appEl.classList.remove("view-home", "view-community");
-
-  // Remove "active" de todos os botões de servidor
   serverBtns.forEach(b => b.classList.remove("active"));
   
-  
-  // --- LÓGICA DE VISTA "HOME" (Feed, Explorar, Perfil, Explorar Servidores) ---
   if (name === "feed" || name === "explore" || name === "profile" || name === "explore-servers") {
     
     appEl.classList.add("view-home");
     mainHeader.hidden = false;
     channelsEl.hidden = true;
-    
-    // 4. Mostra a vista correta
     views[name].hidden = false;
     
-    // 5. Atualiza botões
     if (name === 'explore-servers') {
-      exploreServersBtn.classList.add("active"); // Ativa o botão "+"
+      exploreServersBtn.classList.add("active"); 
     } else {
-      homeBtn.classList.add("active"); // O botão "A" é o ativo
+      homeBtn.classList.add("active"); 
     }
     
     viewTabs.forEach(b => b.classList.toggle("active", b.dataset.view === name));
     btnExplore.classList.toggle("active", name === "explore");
     
-    if (name === 'profile' || name === 'explore-servers') { // Se for perfil ou explorar servidores
+    if (name === 'profile' || name === 'explore-servers') { 
       viewTabs.forEach(b => b.classList.remove("active"));
       btnExplore.classList.remove("active");
     }
 
-    // 6. Carrega dados
     if (name === "feed") apiGetPosts(); 
     if (name === "explore") apiGetExplorePosts();
     if (name === "profile") showDynamicProfile(viewedUsername); 
     if (name === "explore-servers") apiGetExploreCommunities(); 
     
   } 
-  // --- LÓGICA DE VISTA "COMUNIDADE" (Chat) ---
   else if (name === "chat") {
     
     appEl.classList.add("view-community");
@@ -599,7 +628,6 @@ function escapeHtml(s) {
 // --- Inicialização ---
 socket.on('connect', () => {
   console.log('Socket conectado:', socket.id);
-  // 👇 CORREÇÃO: Movido para aqui. O HTML já existe.
   document.getElementById("userName").textContent = currentUser;
   document.getElementById("userAvatar").textContent = currentUser.slice(0, 2).toUpperCase();
   
