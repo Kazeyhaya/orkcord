@@ -79,14 +79,17 @@ const socket = io();
 // ===================================================
 // 2. LÓGICA DO FEED (API / "Agora")
 // ===================================================
-// ... (Toda a lógica de Feed, Posts, Likes, Comentários - Sem mudanças) ...
+
 async function apiGetPosts() {
   try {
     const response = await fetch(`/api/posts?user=${encodeURIComponent(currentUser)}`);
     if (!response.ok) return;
     const data = await response.json();
     renderPosts(data.posts || []); 
-  } catch (err) { console.error("Falha ao buscar posts:", err); postsEl.innerHTML = "<div class='meta'>Falha ao carregar posts.</div>"; }
+  } catch (err) {
+    console.error("Falha ao buscar posts:", err);
+    postsEl.innerHTML = "<div class='meta'>Falha ao carregar posts.</div>";
+  }
 }
 async function apiGetExplorePosts() {
   try {
@@ -94,33 +97,56 @@ async function apiGetExplorePosts() {
     if (!response.ok) return;
     const data = await response.json();
     renderExplorePosts(data.posts || []); 
-  } catch (err) { console.error("Falha ao buscar posts do explorar:", err); explorePostsEl.innerHTML = "<div class='meta'>Falha ao carregar posts.</div>"; }
+  } catch (err) {
+    console.error("Falha ao buscar posts do explorar:", err);
+    explorePostsEl.innerHTML = "<div class='meta'>Falha ao carregar posts.</div>";
+  }
 }
 async function apiCreatePost() {
   const text = feedInput.value.trim();
   if (!text) return;
   feedSend.disabled = true;
   try {
-    await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: currentUser, text: text }) });
+    await fetch('/api/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: currentUser, text: text })
+    });
     feedInput.value = ""; 
     apiGetPosts(); 
-  } catch (err) { console.error("Falha ao criar post:", err); }
+  } catch (err) {
+    console.error("Falha ao criar post:", err);
+  }
   feedSend.disabled = false;
 }
 async function apiLikePost(postId) {
-  try { await fetch(`/api/posts/${postId}/like`, { method: 'POST' }); } catch (err) { console.error("Falha ao dar like:", err); }
+  try {
+    await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
+  } catch (err) {
+    console.error("Falha ao dar like:", err);
+  }
 } 
 async function apiUnlikePost(postId) {
-  try { await fetch(`/api/posts/${postId}/unlike`, { method: 'POST' }); } catch (err) { console.error("Falha ao descurtir:", err); }
+  try {
+    await fetch(`/api/posts/${postId}/unlike`, { method: 'POST' });
+  } catch (err) {
+    console.error("Falha ao descurtir:", err);
+  }
 }
 function renderPosts(posts) {
   if (!postsEl) return;
-  if (posts.length === 0) { postsEl.innerHTML = "<div class='meta' style='padding: 12px;'>O seu feed está vazio. Siga alguém (ou poste algo) para ver aqui!</div>"; return; }
+  if (posts.length === 0) {
+    postsEl.innerHTML = "<div class='meta' style='padding: 12px;'>O seu feed está vazio. Siga alguém (ou poste algo) para ver aqui!</div>";
+    return;
+  }
   renderPostList(postsEl, posts);
 }
 function renderExplorePosts(posts) {
   if (!explorePostsEl) return;
-  if (posts.length === 0) { explorePostsEl.innerHTML = "<div class='meta' style='padding: 12px;'>Ainda não há posts na rede.</div>"; return; }
+  if (posts.length === 0) {
+    explorePostsEl.innerHTML = "<div class='meta' style='padding: 12px;'>Ainda não há posts na rede.</div>";
+    return;
+  }
   renderPostList(explorePostsEl, posts);
 }
 function renderPostList(containerElement, posts) {
@@ -130,18 +156,28 @@ function renderPostList(containerElement, posts) {
     node.className = "post";
     const postUserInitial = (post.user || "?").slice(0, 2).toUpperCase();
     const postTime = new Date(post.timestamp).toLocaleString('pt-BR');
+    
     node.innerHTML = `
       <div class="avatar">${escapeHtml(postUserInitial)}</div>
       <div>
-        <div class="meta"><strong class="post-username" data-username="${escapeHtml(post.user)}">${escapeHtml(post.user)}</strong> • ${postTime}</div>
+        <div class="meta">
+          <strong class="post-username" data-username="${escapeHtml(post.user)}">
+            ${escapeHtml(post.user)}
+          </strong> 
+          • ${postTime}
+        </div>
         <div>${escapeHtml(post.text)}</div>
         <div class="post-actions">
-          <button class="mini-btn" data-like="${post.id}">❤ ${post.likes || 0}</button>
+          <button class="mini-btn" data-like="${post.id}">
+            ❤ ${post.likes || 0}
+          </button>
           <button class="mini-btn" data-comment="${post.id}">Comentar</button>
         </div>
-        <div class="comments" id="comments-for-${post.id}"></div>
+        <div class="comments" id="comments-for-${post.id}">
+          </div>
       </div>`;
     containerElement.appendChild(node);
+    
     apiGetComments(post.id);
   });
 }
@@ -151,40 +187,60 @@ async function apiGetComments(postId) {
     if (!res.ok) return;
     const data = await res.json();
     renderComments(postId, data.comments || []);
-  } catch (err) { console.error(`Falha ao buscar comentários para o post ${postId}:`, err); }
+  } catch (err) {
+    console.error(`Falha ao buscar comentários para o post ${postId}:`, err);
+  }
 }
 async function apiCreateComment(postId, text) {
   try {
-    await fetch(`/api/posts/${postId}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: currentUser, text: text }) });
+    await fetch(`/api/posts/${postId}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: currentUser, text: text })
+    });
     apiGetComments(postId); 
-  } catch (err) { console.error("Falha ao criar comentário:", err); }
+  } catch (err) {
+    console.error("Falha ao criar comentário:", err);
+  }
 }
 function renderComments(postId, comments) {
   const container = document.getElementById(`comments-for-${postId}`);
   if (!container) return; 
-  if (comments.length === 0) { container.innerHTML = ""; return; }
-  container.innerHTML = comments.map(item => `<div class="meta"><strong>${escapeHtml(item.user)}</strong>: ${escapeHtml(item.text)}</div>`).join(""); 
+  if (comments.length === 0) {
+    container.innerHTML = ""; 
+    return;
+  }
+  container.innerHTML = comments.map(item => {
+    return `<div class="meta"><strong>${escapeHtml(item.user)}</strong>: ${escapeHtml(item.text)}</div>`;
+  }).join(""); 
 }
 
 // --- Funções da API do Perfil ---
-// ... (Toda a lógica de Perfil, Depoimentos, Seguir - Sem mudanças) ...
 async function apiGetProfile(username) { 
   try {
     const res = await fetch(`/api/profile/${encodeURIComponent(username)}`);
     if (!res.ok) return;
     const data = await res.json();
     if (profileBioEl) profileBioEl.textContent = data.bio;
-  } catch (err) { console.error("Falha ao buscar bio:", err); }
+  } catch (err) {
+    console.error("Falha ao buscar bio:", err);
+  }
 } 
 async function apiUpdateBio() {
   const newBio = prompt("Digite sua nova bio:", profileBioEl.textContent);
   if (newBio === null || newBio.trim() === "") return; 
   try {
-    const res = await fetch('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: currentUser, bio: newBio.trim() }) });
+    const res = await fetch('/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: currentUser, bio: newBio.trim() })
+    });
     if (!res.ok) return;
     const data = await res.json();
     if (profileBioEl) profileBioEl.textContent = data.bio;
-  } catch (err) { console.error("Falha ao salvar bio:", err); }
+  } catch (err) {
+    console.error("Falha ao salvar bio:", err);
+  }
 }
 async function apiGetTestimonials(username) { 
   try {
@@ -192,22 +248,37 @@ async function apiGetTestimonials(username) {
     if (!res.ok) return;
     const data = await res.json();
     renderTestimonials(data.testimonials || []);
-  } catch (err) { console.error("Falha ao buscar depoimentos:", err); }
+  } catch (err) {
+    console.error("Falha ao buscar depoimentos:", err);
+  }
 }
 async function apiCreateTestimonial() {
   const text = testimonialInput.value.trim();
   if (!text) return; 
   testimonialSend.disabled = true;
   try {
-    await fetch('/api/testimonials', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from_user: currentUser, to_user: viewedUsername, text: text }) });
+    await fetch('/api/testimonials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from_user: currentUser, 
+        to_user: viewedUsername, 
+        text: text
+      })
+    });
     testimonialInput.value = ""; 
     apiGetTestimonials(viewedUsername); 
-  } catch (err) { console.error("Falha ao salvar depoimento:", err); }
+  } catch (err) {
+    console.error("Falha ao salvar depoimento:", err);
+  }
   testimonialSend.disabled = false;
 }
 function renderTestimonials(testimonials) {
   if (!testimonialsEl) return;
-  if (testimonials.length === 0) { testimonialsEl.innerHTML = "<div class='meta'>Nenhum depoimento ainda.</div>"; return; }
+  if (testimonials.length === 0) {
+    testimonialsEl.innerHTML = "<div class='meta'>Nenhum depoimento ainda.</div>";
+    return;
+  }
   testimonialsEl.innerHTML = ""; 
   testimonials.forEach(item => {
     const node = document.createElement("div");
@@ -220,7 +291,7 @@ function renderTestimonials(testimonials) {
 // ===================================================
 // 3. LÓGICA DO CHAT (Socket.IO / "Agora")
 // ===================================================
-// ... (Toda a lógica de Chat, Sockets - Sem mudanças) ...
+
 function renderChannel(name) {
   activeChannel = name; 
   chatMessagesEl.innerHTML = ""; 
@@ -245,12 +316,19 @@ function addMessageBubble({ user, timestamp, message }) {
     </div>
   `;
   chatMessagesEl.appendChild(item);
-  if (isScrolledToBottom) { chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight; }
+  if (isScrolledToBottom) {
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  }
 }
 function sendChatMessage() {
   const text = chatInputEl.value.trim();
   if (!text) return;
-  const messageData = { channel: activeChannel, user: currentUser, message: text, timestamp: new Date().toLocaleString('pt-BR') };
+  const messageData = {
+    channel: activeChannel,
+    user: currentUser, 
+    message: text,
+    timestamp: new Date().toLocaleString('pt-BR') 
+  };
   socket.emit('sendMessage', messageData);
   chatInputEl.value = "";
   chatInputEl.focus();
@@ -261,8 +339,11 @@ socket.on('loadHistory', (messages) => {
   chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight; 
 });
 socket.on('newMessage', (data) => {
-  if (data.channel === activeChannel) { addMessageBubble(data); }
+  if (data.channel === activeChannel) { 
+     addMessageBubble(data);
+  }
 });
+
 
 // ===================================================
 // 4. EVENTOS (Conexões dos Botões)
@@ -285,6 +366,7 @@ function handlePostClick(e) {
   if (likeButton) {
     const postId = likeButton.dataset.like; 
     let currentLikes = parseInt(likeButton.textContent.trim().split(' ')[1]);
+    
     if (likeButton.classList.contains('liked')) {
       apiUnlikePost(postId); 
       likeButton.classList.remove('liked');
@@ -300,12 +382,15 @@ function handlePostClick(e) {
   if (commentButton) {
     const postId = commentButton.dataset.comment;
     const text = prompt("Digite seu comentário:"); 
-    if (text && text.trim()) { apiCreateComment(postId, text.trim()); }
+    if (text && text.trim()) {
+      apiCreateComment(postId, text.trim());
+    }
     return;
   }
 }
 postsEl.addEventListener("click", handlePostClick);
 explorePostsEl.addEventListener("click", handlePostClick); 
+
 
 // --- Eventos dos Botões do Feed (Publicar e Refresh) ---
 feedSend.addEventListener("click", apiCreatePost);
@@ -366,6 +451,7 @@ joinedServersList.addEventListener("click", (e) => {
     activateView("chat", { community: communityId }); 
   }
 });
+
 
 // ===================================================
 // 5. LÓGICA DE TROCA DE VISÃO (Views) E INICIALIZAÇÃO
