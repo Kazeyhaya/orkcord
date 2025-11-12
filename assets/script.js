@@ -17,6 +17,11 @@ const userInitial = currentUser.slice(0, 2).toUpperCase();
 document.getElementById("userAvatar").textContent = userInitial;
 document.getElementById("profileAvatar").textContent = userInitial; // Atualiza avatar do perfil
 
+// ===============================================
+// 👇 "MEMÓRIA" DE LIKES ADICIONADA AQUI 👇
+// ===============================================
+let likedPostsInSession = new Set();
+
 // --- Referências do Chat ---
 const chatMessagesEl = document.getElementById("messages");
 const chatTopicBadge = document.getElementById("topic");
@@ -90,15 +95,21 @@ async function apiCreatePost() {
 }
 
 async function apiLikePost(postId) {
+  // ===============================================
+  // 👇 VERIFICAÇÃO DE LIKE ADICIONADA AQUI 👇
+  // ===============================================
+  // Se o post já está na nossa "memória", não faz nada
+  if (likedPostsInSession.has(postId)) return; 
+  // Adiciona o post na "memória"
+  likedPostsInSession.add(postId);
+  
   try {
-    // Chama a nova rota que criamos no backend
     await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
-    
-    // Atualiza o feed inteiro para mostrar o novo like
     apiGetPosts(); 
-
   } catch (err) {
     console.error("Falha ao dar like:", err);
+    // Se der erro, remove da memória para o usuário poder tentar de novo
+    likedPostsInSession.delete(postId);
   }
 } 
 
@@ -117,13 +128,20 @@ function renderPosts(posts) {
     const postUserInitial = (post.user || "?").slice(0, 2).toUpperCase();
     const postTime = new Date(post.timestamp).toLocaleString('pt-BR');
 
+    // ===============================================
+    // 👇 VERIFICAÇÃO DE "JÁ CURTIDO" ADICIONADA AQUI 👇
+    // ===============================================
+    const isLiked = likedPostsInSession.has(post.id.toString()); // Verifica a "memória"
+
     node.innerHTML = `
       <div class="avatar">${escapeHtml(postUserInitial)}</div>
       <div>
         <div class="meta"><strong>${escapeHtml(post.user)}</strong> • ${postTime}</div>
         <div>${escapeHtml(post.text)}</div>
         <div class="post-actions">
-          <button class="mini-btn" data-like="${post.id}">❤ ${post.likes || 0}</button>
+          <button class="mini-btn" data-like="${post.id}" ${isLiked ? 'disabled' : ''}>
+            ❤ ${post.likes || 0}
+          </button>
           <button class="mini-btn" data-comment="${post.id}">Comentar</button>
         </div>
         <div class="comments">
@@ -142,14 +160,11 @@ feedInput.addEventListener("keydown", (e) => {
 
 // "Ouvinte" de cliques para a área de posts (pega os cliques nos botões de Like)
 postsEl.addEventListener("click", (e) => {
-  // Verifica se o que clicamos foi um botão com o atributo 'data-like'
   if (e.target.matches('[data-like]')) {
-    const postId = e.target.dataset.like; // Pega o ID do post
-    e.target.disabled = true; // Desabilita o botão
+    const postId = e.target.dataset.like; 
+    // Não precisamos mais desabilitar aqui, a "memória" cuida disso
     apiLikePost(postId);
   }
-  
-  // (Mais tarde, podemos adicionar um 'else if (e.target.matches('[data-comment]'))' aqui)
 });
 
 
