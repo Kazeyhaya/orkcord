@@ -185,3 +185,12 @@ a{color:inherit;text-decoration:none}
   .app.view-profile{grid-template-columns:64px 1fr;grid-template-rows:64px 1fr 64px;grid-template-areas: "servers header" "servers chat" "servers userbar"}
   .header-actions{display:none}
 }
+.post-username {
+  cursor: pointer;
+  transition: .2s;
+}
+
+.post-username:hover {
+  color: var(--orkut-blue); /* Usa a cor azul do teu tema */
+  text-decoration: underline;
+}
