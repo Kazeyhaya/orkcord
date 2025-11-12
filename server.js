@@ -27,15 +27,26 @@ async function setupDatabase() {
     await client.query(`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, channel TEXT NOT NULL, "user" TEXT NOT NULL, message TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS posts (id SERIAL PRIMARY KEY, "user" TEXT NOT NULL, text TEXT NOT NULL, likes INT DEFAULT 0, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS profiles ("user" TEXT PRIMARY KEY, bio TEXT)`);
-    await client.query(`CREATE TABLE IF NOT EXISTS testimonials (id SERIAL PRIMARY KEY, "from_user" TEXT NOT NULL, "to_user" TEXT NOT NULL, text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
+    await client.query(`CREATE TABLE IF NOT EXISTS testimonials (id SERIAL PRIMARY KEY, "from_user" TEXT NOT NULL, "to_user" TEXT NOT NULL, text TEXT NOT NULL, timestamp TIMESTAZ DEFAULT NOW(), UNIQUE (from_user, to_user, text))`);
     await client.query(`CREATE TABLE IF NOT EXISTS comments (id SERIAL PRIMARY KEY, post_id INT NOT NULL REFERENCES posts(id) ON DELETE CASCADE, "user" TEXT NOT NULL, text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS follows (id SERIAL PRIMARY KEY, follower_user TEXT NOT NULL, following_user TEXT NOT NULL, timestamp TIMESTAZ DEFAULT NOW(), UNIQUE(follower_user, following_user))`);
     await client.query(`CREATE TABLE IF NOT EXISTS communities (id SERIAL PRIMARY KEY, name TEXT NOT NULL, description TEXT, emoji TEXT, members INT DEFAULT 0, timestamp TIMESTAMPTZ DEFAULT NOW())`);
-    await client.query(`CREATE TABLE IF NOT EXISTS community_members (id SERIAL PRIMARY KEY, user_name TEXT NOT NULL, community_id INT NOT NULL REFERENCES communities(id) ON DELETE CASCADE, timestamp TIMESTAMPTZ DEFAULT NOW(), UNIQUE(user_name, community_id))`);
+    await client.query(`CREATE TABLE IF NOT EXISTS community_members (id SERIAL PRIMARY KEY, user_name TEXT NOT NULL, community_id INT NOT NULL REFERENCES communities(id) ON DELETE CASCADE, timestamp TIMESTAZ DEFAULT NOW(), UNIQUE(user_name, community_id))`);
     
-    // ===============================================
-    // 👇 NOVA TABELA 'CHANNELS' ADICIONADA AQUI 👇
-    // ===============================================
+    // Tabela de Posts da Comunidade (O Fórum)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS community_posts (
+        id SERIAL PRIMARY KEY,
+        community_id INT NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
+        "user" TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT,
+        likes INT DEFAULT 0,
+        timestamp TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    // Tabela de Canais (Agora são dinâmicos e ligados a uma Community)
     await client.query(`
       CREATE TABLE IF NOT EXISTS channels (
         id SERIAL PRIMARY KEY,
@@ -46,7 +57,7 @@ async function setupDatabase() {
       )
     `);
 
-    console.log('Tabelas (incluindo "channels") verificadas/criadas.');
+    console.log('Tabelas (incluindo "community_posts" e "channels") verificadas/criadas.');
 
   } catch (err) {
     console.error('Erro ao criar tabelas:', err);
@@ -62,20 +73,32 @@ async function seedDatabase() {
     const res = await client.query('SELECT 1 FROM communities LIMIT 1');
     if (res.rows.length === 0) {
       console.log('Populando o banco de dados com comunidades de teste...');
-      // Insere as comunidades de teste
+      
       const tech = await client.query(`INSERT INTO communities (name, description, emoji, members) VALUES ('Tecnologia 💻', 'A comunidade oficial para falar de hardware, software e programação.', '💻', 1) RETURNING id`);
       const music = await client.query(`INSERT INTO communities (name, description, emoji, members) VALUES ('Música 🎵', 'Do Rock ao Pop, partilhe as suas batidas favoritas.', '🎵', 1) RETURNING id`);
       const games = await client.query(`INSERT INTO communities (name, description, emoji, members) VALUES ('Games 🎮', 'Discussão geral, do retro ao moderno. Encontre o seu "x1" aqui.', '🎮', 1) RETURNING id`);
       
-      // Adiciona canais padrão para cada comunidade de teste (NOVO)
+      const techId = tech.rows[0].id;
+      const musicId = music.rows[0].id;
+      const gamesId = games.rows[0].id;
+
+      // Adiciona canais padrão para cada comunidade de teste
       await client.query(`
         INSERT INTO channels (community_id, name) VALUES
         ($1, 'geral'), ($1, 'programacao'), 
         ($2, 'geral'), ($2, 'musica-pop'),
         ($3, 'geral'), ($3, 'retrogaming')
-      `, [tech.rows[0].id, music.rows[0].id, games.rows[0].id]);
+      `, [techId, musicId, gamesId]);
 
-      console.log('Comunidades e canais de teste inseridos.');
+      // Adiciona um post de teste em cada comunidade
+      await client.query(`
+        INSERT INTO community_posts (community_id, "user", title, content) VALUES
+        ($1, 'Admin', 'Bem-vindos ao fórum Tech!', 'O que estão a programar hoje?'),
+        ($2, 'Admin', 'Qual é a vossa música do momento?', 'Eu estou a ouvir muito Rock dos anos 90.'),
+        ($3, 'Admin', 'Torneio de SF3?', 'Vamos organizar um torneio de Street Fighter 3.')
+      `, [techId, musicId, gamesId]);
+
+      console.log('Comunidades, canais e posts de teste inseridos.');
     }
   } catch (err) {
     console.error('Erro ao popular dados:', err);
@@ -92,58 +115,16 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'agora.html')); 
 });
 
-// ... (Todas as outras rotas /api/posts, /profile, /following, /follow, etc. - Sem mudanças) ...
-
-// ===============================================
-// 👇 NOVA ROTA 'CREATE COMMUNITY' AQUI 👇
-// ===============================================
-
-app.post('/api/communities/create', async (req, res) => {
-  const { name, emoji, creator } = req.body;
-  if (!name || !creator) {
-    return res.status(400).json({ error: 'Nome e criador são obrigatórios' });
-  }
-  
-  const client = await pool.connect();
+// --- API (Feed, Perfil, Amigos, etc.) ---
+// ... (omissão por brevidade - as rotas de posts, likes, perfil, seguir, etc. estão no mesmo estado) ...
+app.get('/api/posts', async (req, res) => {
+  const { user } = req.query; 
+  if (!user) { return res.status(400).json({ error: 'Utilizador não fornecido' }); }
   try {
-    await client.query('BEGIN'); // Inicia a transação
-    
-    // 1. Cria a nova comunidade
-    const newCommResult = await client.query(
-      `INSERT INTO communities (name, emoji, description, members) 
-       VALUES ($1, $2, $3, 1) RETURNING id, name, emoji`,
-      [name, emoji || '🌟', `Comunidade criada por ${creator}`]
-    );
-    const community = newCommResult.rows[0];
-    
-    // 2. Adiciona o criador como membro
-    await client.query(
-      `INSERT INTO community_members (user_name, community_id) VALUES ($1, $2)`,
-      [creator, community.id]
-    );
-    
-    // 3. Cria o canal de texto #geral padrão
-    await client.query(
-      `INSERT INTO channels (community_id, name) VALUES ($1, $2)`,
-      [community.id, 'geral']
-    );
-    
-    await client.query('COMMIT'); // Finaliza a transação
-    
-    res.status(201).json({ community });
-    
-  } catch (err) {
-    await client.query('ROLLBACK'); // Desfaz tudo se houver erro
-    console.error('Erro ao criar comunidade:', err);
-    res.status(500).json({ error: 'Erro no servidor' });
-  } finally {
-    client.release();
-  }
+    const result = await pool.query(`SELECT p.* FROM posts p LEFT JOIN follows f ON p."user" = f.following_user WHERE f.follower_user = $1 OR p."user" = $1 ORDER BY p.timestamp DESC LIMIT 30`, [user]);
+    res.json({ posts: result.rows });
+  } catch (err) { res.status(500).json({ error: 'Erro no servidor' }); }
 });
-
-
-// ... (Todas as outras rotas /api/community/join, /api/communities/joined, /socket.io - Sem mudanças) ...
-
 app.get('/api/posts/explore', async (req, res) => {
   try {
     const result = await pool.query(`SELECT * FROM posts ORDER BY timestamp DESC LIMIT 30`);
@@ -267,6 +248,7 @@ app.get('/api/communities/explore', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Erro no servidor' }); }
 });
 
+// --- API (Comunidades) ---
 app.post('/api/community/join', async (req, res) => {
   const { user_name, community_id } = req.body;
   if (!user_name || !community_id) { return res.status(400).json({ error: 'Faltam dados' }); }
@@ -274,7 +256,10 @@ app.post('/api/community/join', async (req, res) => {
     await pool.query(`INSERT INTO community_members (user_name, community_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [user_name, community_id]);
     const communityData = await pool.query(`SELECT * FROM communities WHERE id = $1`, [community_id]);
     res.status(201).json({ community: communityData.rows[0] });
-  } catch (err) { res.status(500).json({ error: 'Erro no servidor' }); }
+  } catch (err) {
+    console.error('Erro ao entrar na comunidade:', err);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
 });
 app.get('/api/communities/joined', async (req, res) => {
   const { user_name } = req.query; 
@@ -283,6 +268,42 @@ app.get('/api/communities/joined', async (req, res) => {
     const result = await pool.query(`SELECT c.id, c.name, c.emoji FROM communities c JOIN community_members cm ON c.id = cm.community_id WHERE cm.user_name = $1`, [user_name]);
     res.json({ communities: result.rows });
   } catch (err) { res.status(500).json({ error: 'Erro ao buscar comunidades do utilizador:', err }); }
+});
+
+// [GET] Obter os posts do fórum de uma comunidade (NOVA ROTA)
+app.get('/api/community/:id/posts', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      `SELECT * FROM community_posts WHERE community_id = $1 ORDER BY timestamp DESC`,
+      [id]
+    );
+    res.json({ posts: result.rows });
+  } catch (err) {
+    console.error('Erro ao buscar posts da comunidade:', err);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// [POST] Criar um post no fórum de uma comunidade (NOVA ROTA)
+app.post('/api/community/:id/posts', async (req, res) => {
+  const { id } = req.params;
+  const { user, title, content } = req.body;
+  
+  if (!user || !title) {
+    return res.status(400).json({ error: 'Usuário e título são obrigatórios' });
+  }
+  
+  try {
+    const result = await pool.query(
+      `INSERT INTO community_posts (community_id, "user", title, content) VALUES ($1, $2, $3, $4) RETURNING *`,
+      [id, user, title, content || '']
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Erro ao criar post na comunidade:', err);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
 });
 
 

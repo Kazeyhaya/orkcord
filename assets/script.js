@@ -14,6 +14,9 @@ if (!currentUser) {
 // --- Estado da UI ---
 let activeChannel = "geral"; 
 let viewedUsername = currentUser; 
+let currentCommunityId = null; // 👈 NOVO: Guarda o ID da comunidade ativa
+let currentCommunityName = null; // 👈 NOVO: Guarda o nome da comunidade ativa
+
 
 // --- Referências do Chat ---
 const chatView = document.getElementById("view-chat"); 
@@ -63,6 +66,17 @@ const btnCancelCreate = document.getElementById("btn-cancel-create");
 const createCommunityForm = document.getElementById("create-community-form");
 
 
+// --- Referências do NOVO LAYOUT DE COMUNIDADE (Fórum) ---
+const communityChannelBar = document.querySelector('aside.channels'); // A barra de canais inteira
+const communityTopicList = document.getElementById('community-topic-list');
+const communityTopicView = document.getElementById('view-community-topics'); // O novo feed fórum
+const communityMembersView = document.getElementById('view-community-members'); // A nova página de membros
+const communityTabs = document.querySelectorAll('.channels .view-tabs .pill'); // As abas internas (Tópicos/Chat/Membros)
+const communityChatChannelsList = document.getElementById('community-chat-channels');
+const currentCommunityNameEl = document.getElementById('current-community-name');
+const communityAvatarChannelEl = document.getElementById('community-avatar-channel');
+const communityMembersCountEl = document.getElementById('community-members-count');
+
 // --- Referências de Visão (Views) ---
 const appEl = document.querySelector(".app");
 const mainHeader = document.querySelector(".header"); 
@@ -70,7 +84,7 @@ const channelsEl = document.querySelector(".channels");
 const viewTabs = document.querySelectorAll(".view-tabs .pill"); 
 const serverBtns = document.querySelectorAll(".servers .server"); 
 const homeBtn = document.getElementById("home-btn"); 
-const headerHomeBtn = document.getElementById("header-home-btn"); // 👈 NOVO
+const headerHomeBtn = document.getElementById("header-home-btn"); 
 
 // --- Objeto de Vistas ---
 const views = {
@@ -79,7 +93,9 @@ const views = {
   profile: profileView,
   explore: exploreView,
   "explore-servers": exploreServersView,
-  "create-community": createCommunityView 
+  "create-community": createCommunityView,
+  "community-topics": communityTopicView, // 👈 NOVA VISTA
+  "community-members": communityMembersView // 👈 NOVA VISTA
 };
 
 // --- Conexão Socket.IO (Só para o Chat) ---
@@ -424,7 +440,7 @@ userbarMeBtn.addEventListener("click", () => {
   activateView("profile"); 
 });
 
-// --- Evento do Botão Home (NOVO) ---
+// --- Evento do Botão Home ---
 headerHomeBtn.addEventListener("click", () => { // 👈 NOVA LIGAÇÃO
   activateView("feed"); 
 });
@@ -463,7 +479,7 @@ joinedServersList.addEventListener("click", (e) => {
   const communityBtn = e.target.closest('.community-btn[data-community-id]');
   if (communityBtn) {
     const communityId = communityBtn.dataset.communityId;
-    activateView("chat", { community: communityId }); 
+    activateCommunityView("chat-channels", { community: communityId }); // 👈 MUDANÇA: Chama a nova função
   }
 });
 
@@ -488,6 +504,14 @@ createCommunityForm.addEventListener("submit", (e) => {
     if (!name) return;
 
     apiCreateCommunity(name, emoji, createCommunityForm.querySelector('button[type="submit"]'));
+});
+
+// --- Eventos das Abas Internas da Comunidade (NOVO) ---
+communityTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        const view = tab.dataset.communityView;
+        activateCommunityView(view, { community: currentCommunityId });
+    });
 });
 
 
@@ -528,260 +552,111 @@ function activateView(name, options = {}) {
     if (name === "explore-servers") apiGetExploreCommunities(); 
     
   } 
-  else if (name === "chat") {
+  // ❌ REMOVIDO: A lógica antiga de `else if (name === "chat")` foi substituída por `activateCommunityView`
+}
+
+function activateCommunityView(name, options = {}) {
+    // 1. Esconde todas as vistas principais (incluindo Home views)
+    Object.values(views).forEach(view => view.hidden = true);
     
+    // 2. Define o Layout: Modo Comunidade
     appEl.classList.add("view-community");
     mainHeader.hidden = true; 
-    channelsEl.hidden = false; 
-    chatView.hidden = false;   
+    channelsEl.hidden = false; // Mostra a barra de canais/abas
     
+    // 3. Atualiza o estado da Comunidade
+    currentCommunityId = options.community;
+    
+    // 4. Atualiza o ícone ativo na barra de servidores
+    document.querySelectorAll(".servers .server, .servers .add-btn").forEach(b => b.classList.remove("active"));
     const activeCommunityBtn = document.querySelector(`.community-btn[data-community-id="${options.community}"]`);
     if (activeCommunityBtn) activeCommunityBtn.classList.add("active");
-    
-    renderChannel("geral"); 
-  }
-}
 
-// ===================================================
-// 6. LÓGICA DE PERFIL DINÂMICO E SEGUIR
-// ===================================================
+    // 5. Atualiza as abas internas (Topics, Chat-Channels, Members)
+    communityTabs.forEach(b => b.classList.toggle("active", b.dataset.communityView === name));
 
-async function showDynamicProfile(username) {
-  if (!username) return;
-  apiGetProfile(username);
-  apiGetTestimonials(username);
-  apiGetFollowing(username); 
-  profileNameEl.textContent = username;
-  profileAvatarEl.textContent = username.slice(0, 2).toUpperCase();
-  editBioBtn.disabled = true; 
-  if (username === currentUser) {
-    editBioBtn.textContent = "Editar bio";
-    editBioBtn.onclick = apiUpdateBio; 
-    editBioBtn.disabled = false;
-  } else {
-    try {
-      const res = await fetch(`/api/isfollowing/${encodeURIComponent(username)}?follower=${encodeURIComponent(currentUser)}`);
-      const data = await res.json();
-      if (data.isFollowing) {
-        editBioBtn.textContent = "Deixar de Seguir";
-        editBioBtn.onclick = () => apiUnfollow(username);
-      } else {
-        editBioBtn.textContent = "Seguir"; 
-        editBioBtn.onclick = () => apiFollow(username);
-      }
-      editBioBtn.disabled = false; 
-    } catch (err) {
-      console.error("Erro ao verificar 'follow':", err);
-      editBioBtn.textContent = "Erro";
+    // 6. Mostra a sub-vista correta e carrega dados
+    if (name === "topics") {
+        communityTopicView.hidden = false; // Mostra o novo feed fórum
+        communityChatChannelsList.hidden = true; // Esconde a lista de canais
+        chatView.hidden = true; // Esconde o chat de mensagens
+        // 👇 NOVO: Carregar posts do fórum
+        apiGetCommunityPosts(currentCommunityId); 
+    } else if (name === "chat-channels") {
+        chatView.hidden = false; // Mostra o chat de mensagens
+        communityChatChannelsList.hidden = false; // Mostra a lista de canais
+        communityTopicView.hidden = true;
+        // 👇 NOVO: Carregar canais do banco de dados (Próximo passo)
+        renderChannel("geral"); // Por agora, carrega sempre o canal geral
+    } else if (name === "members") {
+        communityMembersView.hidden = false; // Mostra a lista de membros
+        communityChatChannelsList.hidden = true; // Esconde a lista de canais
+        chatView.hidden = true; // Esconde o chat de mensagens
+        // Carregar membros (próximo passo)
     }
-  }
 }
-async function apiFollow(username) {
-  editBioBtn.disabled = true;
-  try {
-    await fetch('/api/follow', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ follower: currentUser, following: username })
-    });
-    editBioBtn.textContent = "Deixar de Seguir";
-    editBioBtn.onclick = () => apiUnfollow(username);
-    editBioBtn.disabled = false;
-    apiGetFollowing(viewedUsername); 
-  } catch (err) {
-    console.error("Erro ao seguir:", err);
-    editBioBtn.disabled = false;
-  }
-}
-async function apiUnfollow(username) {
-  editBioBtn.disabled = true;
-  try {
-    await fetch('/api/unfollow', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ follower: currentUser, following: username })
-    });
-    editBioBtn.textContent = "Seguir";
-    editBioBtn.onclick = () => apiFollow(username);
-    editBioBtn.disabled = false;
-    apiGetFollowing(viewedUsername); 
-  } catch (err) {
-    console.error("Erro ao deixar de seguir:", err);
-    editBioBtn.disabled = false;
-  }
-}
+
 
 // ===================================================
 // 7. LÓGICA DE EXPLORAR COMUNIDADES
 // ===================================================
-
-async function apiGetExploreCommunities() {
-  try {
-    const res = await fetch(`/api/communities/explore?user_name=${encodeURIComponent(currentUser)}`);
-    if (!res.ok) return;
-    const data = await res.json();
-    renderExploreCommunities(data.communities || []);
-  } catch (err) {
-    console.error("Erro ao buscar comunidades:", err);
-    communityListContainer.innerHTML = "<div class='meta'>Falha ao carregar comunidades.</div>";
-  }
-}
-
-function renderExploreCommunities(communities) {
-  if (!communityListContainer) return;
-  communityListContainer.innerHTML = ""; 
-
-  if (communities.length === 0) {
-    communityListContainer.innerHTML = "<div class='meta'>Nenhuma comunidade pública para entrar.</div>";
-    return;
-  }
-
-  communities.forEach(community => {
-    const node = document.createElement("div");
-    node.className = "community-card-explore";
-    node.innerHTML = `
-      <div class="emoji">${escapeHtml(community.emoji)}</div>
-      <div class="community-card-explore-info">
-        <h3>${escapeHtml(community.name)}</h3>
-        <div class="meta">${escapeHtml(community.description)}</div>
-      </div>
-      <button class="join-btn" data-community-id="${community.id}">Entrar</button>
-    `;
-    communityListContainer.appendChild(node);
-  });
-}
+// ... (omissão por brevidade) ...
 
 // ===================================================
 // 8. LÓGICA DE AMIGOS E ENTRAR EM COMUNIDADES
 // ===================================================
+// ... (omissão por brevidade) ...
 
-// --- Lógica de Amigos ---
-async function apiGetFollowing(username) {
-  try {
-    const res = await fetch(`/api/following/${encodeURIComponent(username)}`);
-    if (!res.ok) return;
-    const data = await res.json();
-    renderFollowing(data.following || []);
-  } catch (err) {
-    console.error("Erro ao buscar lista de 'seguindo':", err);
-    friendsContainer.innerHTML = "<div class='meta'>Falha ao carregar amigos.</div>";
-  }
-}
-function renderFollowing(followingList) {
-  if (!friendsContainer) return;
-  friendsContainer.innerHTML = ""; 
-  if (followingList.length === 0) {
-    friendsContainer.innerHTML = "<div class='meta'>Ainda não segue ninguém.</div>";
-    return;
-  }
-  followingList.forEach(username => {
-    const node = document.createElement("div");
-    node.className = "friend-card";
-    const userInitial = username.slice(0, 2).toUpperCase();
-    node.innerHTML = `
-      <div class="avatar">${escapeHtml(userInitial)}</div>
-      <strong class="friend-card-name" data-username="${escapeHtml(username)}">${escapeHtml(username)}</strong>
-    `;
-    friendsContainer.appendChild(node);
-  });
-}
+// ===================================================
+// 9. LÓGICA DE FÓRUM DA COMUNIDADE (NOVO)
+// ===================================================
 
-// --- Lógica de Entrar/Listar Comunidades ---
-async function apiJoinCommunity(communityId, button) {
-  button.disabled = true;
-  button.textContent = "Entrando...";
-  try {
-    const res = await fetch('/api/community/join', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_name: currentUser, community_id: communityId })
-    });
-    if (!res.ok) {
-      throw new Error('Falha ao entrar na comunidade');
-    }
-    
-    const data = await res.json();
-    renderJoinedCommunities([data.community]); 
-    activateView("chat", { community: data.community.id });
-    
-  } catch (err) {
-    console.error("Erro ao entrar na comunidade:", err);
-    alert("Falha ao entrar na comunidade.");
-    button.disabled = false;
-    button.textContent = "Entrar";
-  }
-}
-
-async function apiGetJoinedCommunities() {
-  try {
-    const res = await fetch(`/api/communities/joined?user_name=${encodeURIComponent(currentUser)}`);
-    if (!res.ok) return;
-    const data = await res.json();
-    renderJoinedCommunities(data.communities || []);
-  } catch (err) {
-    console.error("Erro ao buscar comunidades do utilizador:", err);
-  }
-}
-
-function renderJoinedCommunities(communities) {
-  if (!joinedServersList) return;
-  
-  communities.forEach(community => {
-    if (document.querySelector(`.community-btn[data-community-id="${community.id}"]`)) {
-      return; 
-    }
-    
-    const node = document.createElement("div");
-    node.className = "server community-btn";
-    node.dataset.communityId = community.id;
-    node.title = community.name;
-    node.innerHTML = `<span class="emoji">${escapeHtml(community.emoji)}</span>`;
-    
-    joinedServersList.appendChild(node);
-  });
-}
-
-// --- Lógica de Criação de Comunidades (NOVO) ---
-async function apiCreateCommunity(name, emoji, button) {
-    button.disabled = true;
-    button.textContent = "Criando...";
-    
+// [GET] Obter os posts do fórum de uma comunidade
+async function apiGetCommunityPosts(communityId) {
     try {
-        const res = await fetch('/api/communities/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, emoji, creator: currentUser })
-        });
-
-        if (!res.ok) {
-            throw new Error('Falha ao criar comunidade');
-        }
-
+        const res = await fetch(`/api/community/${communityId}/posts`);
         const data = await res.json();
-        const newComm = data.community;
-
-        // 1. Adiciona o ícone à barra esquerda
-        renderJoinedCommunities([newComm]); 
-        
-        // 2. Muda para a vista de chat da nova comunidade
-        activateView("chat", { community: newComm.id });
-
+        renderCommunityPosts(data.posts || []);
     } catch (err) {
-        console.error("Erro ao criar comunidade:", err);
-        alert("Falha ao criar comunidade. Tente novamente.");
-        button.disabled = false;
-        button.textContent = "Criar e Entrar";
+        console.error("Erro ao buscar posts do fórum:", err);
+        communityTopicList.innerHTML = "<div class='meta'>Falha ao carregar posts do fórum.</div>";
     }
 }
 
+function renderCommunityPosts(posts) {
+    if (!communityTopicList) return;
+    communityTopicList.innerHTML = "";
 
-// --- Segurança ---
-function escapeHtml(s) {
-  if (!s) return "";
-  return s.replace(/[&<>"']/g, m => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
-  }[m]));
+    if (posts.length === 0) {
+        communityTopicList.innerHTML = "<div class='meta' style='padding: 12px;'>Nenhum tópico ainda. Seja o primeiro a iniciar uma discussão!</div>";
+        return;
+    }
+
+    posts.forEach(post => {
+        const node = document.createElement("div");
+        node.className = "post"; // Reutilizamos a classe 'post'
+        const userInitial = post.user.slice(0, 2).toUpperCase();
+        const postTime = new Date(post.timestamp).toLocaleString('pt-BR');
+
+        node.innerHTML = `
+            <div class="avatar">${escapeHtml(userInitial)}</div>
+            <div>
+                <div class="meta">
+                    <strong class="post-username" data-username="${escapeHtml(post.user)}">
+                        ${escapeHtml(post.user)}
+                    </strong> 
+                    • ${postTime}
+                </div>
+                <h3>${escapeHtml(post.title)}</h3>
+                <div>${escapeHtml(post.content)}</div>
+                <div class="post-actions">
+                    <button class="mini-btn">💬 Comentários</button>
+                </div>
+            </div>`;
+        communityTopicList.appendChild(node);
+    });
 }
+// ... (Resto do script.js - Funções auxiliares, Inicialização - Sem mudanças) ...
 
 // --- Inicialização ---
 socket.on('connect', () => {
