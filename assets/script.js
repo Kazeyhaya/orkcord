@@ -177,7 +177,6 @@ function renderTestimonials(testimonials) {
 async function apiGetCommunityPosts(communityId) {
     try {
         const res = await fetch(`/api/community/${communityId}/posts`);
-        if (!res.ok) return;
         const data = await res.json();
         renderCommunityPosts(data.posts || []);
     } catch (err) {
@@ -426,7 +425,11 @@ function activateView(name, options = {}) {
 
 function activateCommunityView(name, options = {}) {
     Object.values(DOM.views).forEach(view => view.hidden = true);
+    
+    // 👇 CORREÇÃO: Remover a classe 'view-home'
+    DOM.appEl.classList.remove("view-home");
     DOM.appEl.classList.add("view-community");
+    
     DOM.mainHeader.hidden = true; 
     DOM.channelsEl.hidden = false; 
     
@@ -575,7 +578,7 @@ function initializeUI() {
     DOM.appEl = document.querySelector(".app");
     DOM.mainHeader = document.querySelector(".header"); 
     DOM.channelsEl = document.querySelector(".channels");
-    DOM.viewTabs = document.querySelectorAll(".header .view-tabs .pill"); // Corrigido para ser específico do Header
+    DOM.viewTabs = document.querySelectorAll(".header .view-tabs .pill"); 
     DOM.serverBtns = document.querySelectorAll(".servers .server"); 
     DOM.homeBtn = document.getElementById("home-btn"); 
     DOM.headerHomeBtn = document.getElementById("header-home-btn"); 
