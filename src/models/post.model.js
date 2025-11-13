@@ -1,4 +1,4 @@
-// 👇 MUDANÇA: Caminho corrigido para o mesmo diretório (.)
+// src/models/post.model.js
 const db = require('./db'); // Importa a nossa ligação 'pool'
 
 // [GET] Obter o feed personalizado
@@ -47,11 +47,33 @@ const unlikePost = async (postId) => {
   return result.rows[0];
 };
 
+// --- NOVAS FUNÇÕES DE COMENTÁRIOS ---
+
+// [GET] Obter comentários de um post
+const getComments = async (postId) => {
+    const result = await db.query(
+        'SELECT "user", text FROM comments WHERE post_id = $1 ORDER BY timestamp ASC', 
+        [postId]
+    );
+    return result.rows;
+};
+
+// [POST] Criar um comentário
+const createComment = async (postId, user, text) => {
+    const result = await db.query(
+        'INSERT INTO comments (post_id, "user", text) VALUES ($1, $2, $3) RETURNING *', 
+        [postId, user, text]
+    );
+    return result.rows[0];
+};
+
 // Exportamos as "receitas"
 module.exports = {
   getPersonalizedFeed,
   getGlobalFeed,
   createPost,
   likePost,
-  unlikePost
+  unlikePost,
+  getComments,      // <-- Novo
+  createComment     // <-- Novo
 };
