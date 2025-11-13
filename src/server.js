@@ -17,90 +17,16 @@ app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
 // --- ROTAS DA API ---
 
 // 1. ROTAS REATORADAS (POSTS E COMENTÁRIOS)
-// O servidor vai entregar todos os pedidos de '/api/posts' para este ficheiro
 const postRoutes = require('./routes/post.routes');
 app.use('/api/posts', postRoutes);
 
+// 2. NOVAS ROTAS REATORADAS (PERFIL E SEGUIR)
+const profileRoutes = require('./routes/profile.routes');
+// Montamos na raiz '/api' para que ele apanhe '/api/profile', '/api/follow', etc.
+app.use('/api', profileRoutes);
 
-// 2. ROTAS EM FALTA (TEMPORARIAMENTE NO SERVER.JS)
-// (Estas são as rotas que vão corrigir o botão "Erro", os amigos, etc.)
 
-// --- Rotas de Perfil e "Seguir" (Follow) ---
-
-app.get('/api/profile/:username', async (req, res) => {
-  try {
-    const { username } = req.params;
-    const result = await db.query('SELECT bio FROM profiles WHERE "user" = $1', [username]);
-    const bio = result.rows[0]?.bio || "Nenhuma bio definida.";
-    res.json({ bio });
-  } catch (err) { 
-    console.error("Erro em GET /api/profile:", err);
-    res.status(500).json({ error: 'Erro ao buscar perfil' }); 
-  }
-});
-
-app.post('/api/profile', async (req, res) => {
-  try {
-    const { user, bio } = req.body;
-    const result = await db.query(
-      'INSERT INTO profiles ("user", bio) VALUES ($1, $2) ON CONFLICT ("user") DO UPDATE SET bio = $2 RETURNING bio',
-      [user, bio]
-    );
-    res.status(200).json(result.rows[0]);
-  } catch (err) { 
-    console.error("Erro em POST /api/profile:", err);
-    res.status(500).json({ error: 'Erro ao atualizar bio' }); 
-  }
-});
-
-app.get('/api/following/:username', async (req, res) => {
-  try {
-    const { username } = req.params;
-    const result = await db.query('SELECT following_user FROM follows WHERE follower_user = $1', [username]);
-    const followingList = result.rows.map(r => r.following_user);
-    res.json({ following: followingList });
-  } catch (err) { 
-    console.error("Erro em GET /api/following:", err);
-    res.status(500).json({ error: 'Erro ao buscar amigos' }); 
-  }
-});
-
-// ESTA ROTA CORRIGE O BOTÃO "ERRO"
-app.get('/api/isfollowing/:username', async (req, res) => {
-    try {
-        const { username } = req.params; // Quem o utilizador está a ver
-        const { follower } = req.query; // O utilizador atual
-        if (!follower) return res.status(400).json({ error: "Follower não especificado" });
-        
-        const result = await db.query('SELECT 1 FROM follows WHERE follower_user = $1 AND following_user = $2', [follower, username]);
-        res.json({ isFollowing: result.rows.length > 0 });
-    } catch (err) { 
-      console.error("Erro em GET /api/isfollowing:", err);
-      res.status(500).json({ error: 'Erro ao verificar' }); 
-    }
-});
-
-app.post('/api/follow', async (req, res) => {
-    try {
-        const { follower, following } = req.body;
-        await db.query('INSERT INTO follows (follower_user, following_user) VALUES ($1, $2) ON CONFLICT DO NOTHING', [follower, following]);
-        res.status(201).json({ success: true });
-    } catch (err) { 
-      console.error("Erro em POST /api/follow:", err);
-      res.status(500).json({ error: 'Erro ao seguir' }); 
-    }
-});
-
-app.post('/api/unfollow', async (req, res) => {
-    try {
-        const { follower, following } = req.body;
-        await db.query('DELETE FROM follows WHERE follower_user = $1 AND following_user = $2', [follower, following]);
-        res.status(200).json({ success: true });
-    } catch (err) { 
-      console.error("Erro em POST /api/unfollow:", err);
-      res.status(500).json({ error: 'Erro ao deixar de seguir' }); 
-    }
-});
+// 3. ROTAS EM FALTA (TEMPORARIAMENTE NO SERVER.JS)
 
 // --- Rotas de Depoimentos (Testimonials) ---
 
@@ -206,7 +132,6 @@ app.get('/', (req, res) => {
 });
 
 // --- Lógica do Socket.IO (Chat) ---
-// (Esta lógica pode ficar aqui por enquanto)
 const channelsHistory = { 'geral': [], 'scraps': [], 'testimonials': [], 'albums': [], 'voz-g1': [], 'voz-music': [] };
 
 io.on('connection', (socket) => {
