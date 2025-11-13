@@ -20,37 +20,17 @@ app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
 const postRoutes = require('./routes/post.routes');
 app.use('/api/posts', postRoutes);
 
-// 2. NOVAS ROTAS REATORADAS (PERFIL E SEGUIR)
+// 2. ROTAS REATORADAS (PERFIL E SEGUIR)
 const profileRoutes = require('./routes/profile.routes');
-// Montamos na raiz '/api' para que ele apanhe '/api/profile', '/api/follow', etc.
 app.use('/api', profileRoutes);
 
+// 3. NOVAS ROTAS REATORADAS (DEPOIMENTOS)
+const testimonialRoutes = require('./routes/testimonial.routes');
+app.use('/api/testimonials', testimonialRoutes);
 
-// 3. ROTAS EM FALTA (TEMPORARIAMENTE NO SERVER.JS)
 
-// --- Rotas de Depoimentos (Testimonials) ---
-
-app.get('/api/testimonials/:username', async (req, res) => {
-    try {
-        const { username } = req.params;
-        const result = await db.query('SELECT from_user, text FROM testimonials WHERE to_user = $1 ORDER BY timestamp DESC', [username]);
-        res.json({ testimonials: result.rows });
-    } catch (err) { 
-      console.error("Erro em GET /api/testimonials:", err);
-      res.status(500).json({ error: 'Erro ao buscar depoimentos' }); 
-    }
-});
-
-app.post('/api/testimonials', async (req, res) => {
-    try {
-        const { from_user, to_user, text } = req.body;
-        await db.query('INSERT INTO testimonials (from_user, to_user, text) VALUES ($1, $2, $3)', [from_user, to_user, text]);
-        res.status(201).json({ success: true });
-    } catch (err) { 
-      console.error("Erro em POST /api/testimonials:", err);
-      res.status(500).json({ error: 'Erro ao criar depoimento' }); 
-    }
-});
+// 4. ROTAS EM FALTA (TEMPORARIAMENTE NO SERVER.JS)
+// (Apenas as rotas de Comunidades restam aqui)
 
 // --- Rotas de Comunidades ---
 
