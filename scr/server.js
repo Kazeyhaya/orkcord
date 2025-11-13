@@ -2,7 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-// 👇 MUDANÇA: O caminho foi corrigido (removido ./src/)
+// 👇 MUDANÇA: O caminho foi corrigido para o mesmo diretório (./)
 const db = require('./models/db'); 
 
 const app = express();
@@ -16,7 +16,7 @@ app.use(express.json());
 app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
 
 // --- ROTAS DA API ---
-// 👇 MUDANÇA: O caminho foi corrigido (removido ./src/)
+// 👇 MUDANÇA: O caminho foi corrigido para o mesmo diretório (./)
 const postRoutes = require('./routes/post.routes');
 app.use('/api/posts', postRoutes);
 
