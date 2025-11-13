@@ -1,31 +1,25 @@
 // ===================================================
-// 1. ESTADO GLOBAL (Sem Referências DOM)
+// 1. ESTADO GLOBAL E OBJETOS DOM
 // ===================================================
 
-// --- Identificação do Usuário ---
-const storedUser = localStorage.getItem("agora:user");
-let currentUser = storedUser && storedUser.trim() ? storedUser.trim() : null;
-if (!currentUser) {
-  currentUser = prompt("Digite seu nome de usuário (para o Feed e Chat):");
-  if (!currentUser || !currentUser.trim()) currentUser = "Anônimo";
-  localStorage.setItem("agora:user", currentUser);
-}
-
 // --- Estado da UI ---
+let currentUser = null; // Agora começa como nulo
 let activeChannel = "geral"; 
-let viewedUsername = currentUser; 
+let viewedUsername = null; // Começa como nulo
 let currentCommunityId = null; 
 let currentCommunityName = null; 
 
 // --- Objeto de Referências DOM ---
-let DOM = {}; // 👈 Todas as referências DOM viverão aqui.
+let DOM = {}; // DOM da App Principal
+let LoginDOM = {}; // DOM da Tela de Login
 
-// --- Conexão Socket.IO (Só para o Chat) ---
-const socket = io();
+// --- Conexão Socket.IO ---
+// MUDANÇA: Não liga automaticamente. Ligamos manualmente após o login.
+const socket = io({ autoConnect: false });
 
 
 // ===================================================
-// 1.5 FUNÇÕES AUXILIARES (Definidas Primeiro)
+// 1.5 FUNÇÕES AUXILIARES
 // ===================================================
 
 function escapeHtml(s) {
@@ -37,10 +31,9 @@ function escapeHtml(s) {
 
 // ===================================================
 // 2. LÓGICA DE API E RENDERIZAÇÃO (FUNÇÕES)
-// ===================================================
-
-// --- Funções de Feed/Posts ---
-// (Estas funções permanecem iguais)
+// (Todo o teu código de API e renderização fica aqui)
+// (apiGetPosts, renderPosts, apiGetProfile, etc... NENHUMA MUDANÇA AQUI)
+// ...
 async function apiGetPosts() {
   try {
     const response = await fetch(`/api/posts?user=${encodeURIComponent(currentUser)}`);
@@ -123,56 +116,38 @@ function renderComments(postId, comments) {
   if (comments.length === 0) { container.innerHTML = ""; return; }
   container.innerHTML = comments.map(item => `<div class="meta"><strong>${escapeHtml(item.user)}</strong>: ${escapeHtml(item.text)}</div>`).join(""); 
 }
-
-// --- Funções de Perfil, Mood e Depoimentos ---
-
-// 👇 MUDANÇA: Esta função agora também carrega o Mood
 async function apiGetProfile(username) { 
   try {
     const res = await fetch(`/api/profile/${encodeURIComponent(username)}`);
     if (!res.ok) return;
     const data = await res.json();
-    
-    // Atualiza a Bio na página de perfil
     if (DOM.profileBioEl) DOM.profileBioEl.textContent = data.bio;
-
-    // 👇 NOVO: Atualiza o Mood na barra de utilizador se for o utilizador atual
     if (username === currentUser && DOM.userbarMood) {
       DOM.userbarMood.textContent = data.mood || "✨";
     }
-
   } catch (err) { console.error("Falha ao buscar perfil:", err); }
 } 
-
-// 👇 NOVA FUNÇÃO: Atualizar o Mood
 async function apiUpdateMood() {
   const currentMood = DOM.userbarMood.textContent;
   const newMood = prompt("Qual é o seu novo mood?", currentMood);
-  
-  if (newMood === null || newMood.trim() === "") return; // Utilizador cancelou
-  
+  if (newMood === null || newMood.trim() === "") return;
   const mood = newMood.trim();
   DOM.userbarMood.textContent = "Salvando...";
-  
   try {
     const res = await fetch('/api/profile/mood', { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify({ user: currentUser, mood: mood }) 
     });
-    
     if (!res.ok) throw new Error('Falha ao salvar');
-    
     const data = await res.json();
-    DOM.userbarMood.textContent = data.mood; // Atualiza com o 'mood' confirmado pelo servidor
-    
+    DOM.userbarMood.textContent = data.mood;
   } catch (err) {
     console.error("Falha ao salvar mood:", err);
-    DOM.userbarMood.textContent = currentMood; // Reverte em caso de erro
+    DOM.userbarMood.textContent = currentMood;
     alert("Não foi possível salvar seu mood.");
   }
 }
-
 async function apiUpdateBio() {
   const newBio = prompt("Digite sua nova bio:", DOM.profileBioEl.textContent);
   if (newBio === null || newBio.trim() === "") return; 
@@ -213,9 +188,6 @@ function renderTestimonials(testimonials) {
     DOM.testimonialsEl.appendChild(node);
   });
 }
-
-// --- Funções de Fórum de Comunidades ---
-// (Estas funções permanecem iguais)
 async function apiGetCommunityPosts(communityId) {
     try {
         const res = await fetch(`/api/community/${communityId}/posts`);
@@ -229,18 +201,15 @@ async function apiGetCommunityPosts(communityId) {
 function renderCommunityPosts(posts) {
     if (!DOM.communityTopicList) return;
     DOM.communityTopicList.innerHTML = "";
-
     if (posts.length === 0) {
         DOM.communityTopicList.innerHTML = "<div class='meta' style='padding: 12px;'>Nenhum tópico ainda. Seja o primeiro a iniciar uma discussão!</div>";
         return;
     }
-
     posts.forEach(post => {
         const node = document.createElement("div");
         node.className = "post"; 
         const userInitial = post.user.slice(0, 2).toUpperCase();
         const postTime = new Date(post.timestamp).toLocaleString('pt-BR');
-
         node.innerHTML = `
             <div class="avatar">${escapeHtml(userInitial)}</div>
             <div>
@@ -259,9 +228,6 @@ function renderCommunityPosts(posts) {
         DOM.communityTopicList.appendChild(node);
     });
 }
-
-// --- Lógica de Amigos e Entrar em Comunidades ---
-// (Estas funções permanecem iguais)
 async function apiGetFollowing(username) {
   try {
     const res = await fetch(`/api/following/${encodeURIComponent(username)}`);
@@ -357,11 +323,11 @@ function renderExploreCommunities(communities) {
     DOM.communityListContainer.appendChild(node);
   });
 }
-
+// ...
 // ===================================================
 // 3. LÓGICA DO CHAT (Socket.IO / "Agora")
-// ===================================================
-// (Esta secção permanece igual)
+// (Secção inteira sem mudanças)
+// ...
 function renderChannel(name) {
   activeChannel = name; 
   DOM.chatMessagesEl.innerHTML = ""; 
@@ -405,12 +371,11 @@ socket.on('loadHistory', (messages) => {
 socket.on('newMessage', (data) => {
   if (data.channel === activeChannel) { addMessageBubble(data); }
 });
-
-
+// ...
 // ===================================================
 // 4. EVENTOS (Conexões dos Botões)
-// ===================================================
-// (Esta secção permanece igual)
+// (Secção inteira sem mudanças)
+// ...
 function handlePostClick(e) {
   const userLink = e.target.closest('.post-username[data-username]');
   if (userLink) { viewedUsername = userLink.dataset.username; activateView("profile"); return; }
@@ -429,11 +394,11 @@ function handlePostClick(e) {
     return;
   }
 }
-
+// ...
 // ===================================================
 // 5. LÓGICA DE TROCA DE VISÃO (Views)
-// ===================================================
-// (Esta secção permanece igual)
+// (Secção inteira sem mudanças)
+// ...
 function activateView(name, options = {}) {
   Object.values(DOM.views).forEach(view => view.hidden = true);
   DOM.appEl.classList.remove("view-home", "view-community");
@@ -494,18 +459,14 @@ function activateCommunityView(name, options = {}) {
         DOM.communityMembersView.hidden = false; 
     }
 }
-
-
+// ...
 // ===================================================
 // 6. LÓGICA DE PERFIL DINÂMICO E SEGUIR
-// ===================================================
-// (Esta secção permanece igual)
+// (Secção inteira sem mudanças)
+// ...
 async function showDynamicProfile(username) {
   if (!username) return;
-  
-  // 👇 MUDANÇA: Esta função agora também carrega o mood do utilizador atual
   apiGetProfile(username);
-  
   apiGetTestimonials(username);
   apiGetFollowing(username); 
   DOM.profileNameEl.textContent = username;
@@ -567,13 +528,13 @@ async function apiUnfollow(username) {
     DOM.editBioBtn.disabled = false;
   }
 }
-
+// ...
 // ===================================================
-// 7. INICIALIZAÇÃO
+// 7. INICIALIZAÇÃO (LÓGICA DE LOGIN ATUALIZADA)
 // ===================================================
 
-function initializeUI() {
-    // 1. Definição de TODAS as referências DOM
+// Esta função (a antiga 'initializeUI') agora só mapeia o DOM
+function mapAppDOM() {
     DOM.chatView = document.getElementById("view-chat"); 
     DOM.chatMessagesEl = document.getElementById("messages");
     DOM.chatTopicBadge = document.getElementById("topic");
@@ -594,11 +555,8 @@ function initializeUI() {
     DOM.profileBioEl = document.getElementById("profileBio");
     DOM.editBioBtn = document.getElementById("editBioBtn");
     DOM.userbarMeBtn = document.getElementById("userbar-me");
-    
-    // 👇 NOVAS Referências DOM para o Mood
     DOM.userbarMoodContainer = document.getElementById("userbar-mood-container");
     DOM.userbarMood = document.getElementById("userbar-mood");
-
     DOM.friendsContainer = document.getElementById("friends"); 
     DOM.testimonialsEl = document.getElementById("testimonials");
     DOM.testimonialInput = document.getElementById("testimonialInput");
@@ -637,8 +595,10 @@ function initializeUI() {
         "community-topics": DOM.communityTopicView, 
         "community-members": DOM.communityMembersView 
     };
+}
 
-    // 2. LIGAÇÃO DOS EVENTOS (Usando DOM.references)
+// Esta função liga os eventos da app principal
+function bindAppEvents() {
     DOM.chatSendBtn.addEventListener("click", sendChatMessage);
     DOM.chatInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") sendChatMessage(); });
     document.querySelectorAll(".channel[data-channel]").forEach(c => c.addEventListener("click", () => renderChannel(c.getAttribute("data-channel"))));
@@ -651,10 +611,7 @@ function initializeUI() {
     DOM.viewTabs.forEach(b => b.addEventListener("click", () => { const viewName = b.dataset.view; activateView(viewName); }));
     DOM.btnExplore.addEventListener("click", () => activateView("explore"));
     DOM.userbarMeBtn.addEventListener("click", () => { viewedUsername = currentUser; activateView("profile"); });
-    
-    // 👇 NOVO Evento: Clicar no Mood
     DOM.userbarMoodContainer.addEventListener("click", apiUpdateMood);
-
     DOM.headerHomeBtn.addEventListener("click", () => { activateView("feed"); });
     DOM.homeBtn.addEventListener("click", () => { activateView("feed"); });
     DOM.exploreServersBtn.addEventListener("click", () => { activateView("explore-servers"); });
@@ -687,12 +644,13 @@ function initializeUI() {
     });
 }
 
-
-socket.on('connect', () => {
+// Esta é a função que é chamada DEPOIS do login
+function startApp() {
   console.log('Socket conectado:', socket.id);
   
-  // 1. Encontra e liga todos os elementos DOM
-  initializeUI();
+  // 1. Mapeia e liga os elementos da app principal
+  mapAppDOM();
+  bindAppEvents();
   
   // 2. Define os nomes de utilizador na UI
   document.getElementById("userName").textContent = currentUser;
@@ -700,10 +658,61 @@ socket.on('connect', () => {
   
   // 3. Carrega os dados iniciais
   apiGetJoinedCommunities(); 
+  apiGetProfile(currentUser); // Carrega bio e mood
   
-  // 👇 NOVO: Carrega o perfil do utilizador atual (para buscar a bio e o mood)
-  apiGetProfile(currentUser);
-  
-  // 4. Ativa a visão inicial
+  // 4. Ativa a visão inicial e mostra a app
   activateView("feed"); 
-});
+  DOM.appEl.hidden = false; // Mostra a app
+  LoginDOM.view.hidden = true; // Esconde o login
+}
+
+// Esta função é chamada quando o formulário de login é submetido
+function handleLoginSubmit(e) {
+    e.preventDefault();
+    const username = LoginDOM.input.value.trim();
+    if (!username) return;
+    
+    // Define o utilizador global e guarda no localStorage
+    currentUser = username;
+    viewedUsername = currentUser;
+    localStorage.setItem("agora:user", currentUser);
+    
+    // Agora, liga o socket.
+    // O evento 'connect' vai disparar e chamar a 'startApp'
+    socket.connect();
+}
+
+// Esta é a primeira função que corre
+function checkLogin() {
+    // 1. Mapeia os elementos do login (e o .app)
+    LoginDOM.view = document.getElementById('login-view');
+    LoginDOM.form = document.getElementById('login-form');
+    LoginDOM.input = document.getElementById('login-username-input');
+    DOM.appEl = document.querySelector(".app"); // A app principal
+
+    // 2. Tenta obter o utilizador do localStorage
+    const storedUser = localStorage.getItem("agora:user");
+    
+    // Liga o evento 'connect' ANTES de tentar ligar
+    socket.on('connect', startApp);
+
+    if (storedUser && storedUser.trim()) {
+        // --- JÁ ESTÁ LOGADO ---
+        currentUser = storedUser.trim();
+        viewedUsername = currentUser;
+        
+        // Liga o socket. Isto vai disparar 'connect' e chamar 'startApp'
+        socket.connect();
+    } else {
+        // --- NÃO ESTÁ LOGADO ---
+        // Mostra o formulário de login e esconde a app
+        LoginDOM.view.hidden = false;
+        DOM.appEl.hidden = true;
+        
+        // Adiciona o listener para o "Enter" no formulário
+        LoginDOM.form.addEventListener('submit', handleLoginSubmit);
+    }
+}
+
+// Inicia todo o processo
+checkLogin();

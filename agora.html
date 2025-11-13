@@ -9,8 +9,19 @@
   <meta name="color-scheme" content="dark">
 </head>
 <body>
-  <div class="app">
-    <aside class="servers" aria-label="Comunidades">
+
+  <div class="login-overlay" id="login-view" hidden>
+    <form class="login-card" id="login-form">
+      <div class="brand-badge" style="margin-bottom: 12px; background: linear-gradient(135deg, var(--orkut-pink), var(--orkut-blue)); font-weight: bold; font-size: 24px;">A</div>
+      <h2>Bem-vindo ao Agora</h2>
+      <p class="meta" style="margin-bottom: 15px;">Digite um nome de usuário para entrar.</p>
+      
+      <input class="input" id="login-username-input" placeholder="Seu nome de usuário..." required style="width: 100%; text-align: center;">
+      
+      <button class="send" type="submit" style="width: 100%; margin-top: 10px;">Entrar</button>
+    </form>
+  </div>
+  <div class="app" hidden> <aside class="servers" aria-label="Comunidades">
       <div id="home-btn" class="server active" title="Agora" style="background: linear-gradient(135deg, var(--orkut-pink), var(--orkut-blue)); font-weight: bold; font-size: 24px;">A</div>
       
       <div class="divider"></div>
@@ -187,6 +198,7 @@
           <div class="meta clickable" id="userbar-mood-container" title="Clique para mudar o seu mood">
             Mood: <span id="userbar-mood" style="color:var(--orkut-pink)">❤ feliz</span>
           </div>
+        </div>
       </div>
       <div class="user-actions">
         <div class="presence" title="online"></div>
