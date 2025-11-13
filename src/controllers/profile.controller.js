@@ -1,12 +1,13 @@
 // src/controllers/profile.controller.js
-const Profile = require('../models/profile.class'); // MUDANÇA: Importa a Classe
+const Profile = require('../models/profile.class'); // Importa a Classe
 
 // [GET] /api/profile/:username
 const getProfileBio = async (req, res) => {
     try {
         const { username } = req.params;
-        const profile = await Profile.findByUser(username); // Encontra o perfil
-        res.json({ bio: profile.bio }); // Retorna a bio dele
+        const profile = await Profile.findByUser(username);
+        // 👇 MUDANÇA: Agora retorna o objeto profile inteiro (com bio e mood)
+        res.json(profile); 
     } catch (err) {
         console.error("Erro no controlador getProfileBio:", err);
         res.status(500).json({ error: 'Erro ao buscar perfil' });
@@ -21,9 +22,9 @@ const updateProfileBio = async (req, res) => {
             return res.status(400).json({ error: 'Utilizador e bio são obrigatórios' });
         }
         
-        const profile = await Profile.findByUser(user); // 1. Encontra
-        profile.bio = bio; // 2. Modifica o objeto
-        await profile.save(); // 3. Diz-lhe para se salvar
+        const profile = await Profile.findByUser(user);
+        profile.bio = bio; // Modifica a bio
+        await profile.save(); // Salva (isto também salva o mood atual)
         
         res.status(200).json(profile);
     } catch (err) {
@@ -32,7 +33,25 @@ const updateProfileBio = async (req, res) => {
     }
 };
 
-// [GET] /api/following/:username
+// 👇 NOVA FUNÇÃO (Controlador para o Mood)
+// [POST] /api/profile/mood
+const updateUserMood = async (req, res) => {
+    try {
+        const { user, mood } = req.body;
+        if (!user || mood === undefined) {
+            return res.status(400).json({ error: 'Utilizador e mood são obrigatórios' });
+        }
+        // Usamos o nosso novo método estático super eficiente
+        const newMood = await Profile.updateMood(user, mood);
+        res.status(200).json({ mood: newMood });
+    } catch (err) {
+        console.error("Erro no controlador updateUserMood:", err);
+        res.status(500).json({ error: 'Erro ao atualizar mood' });
+    }
+};
+
+// (O resto dos teus controladores: getFollowingList, getIsFollowing, addFollow, removeFollow)
+// ... (ficam iguais) ...
 const getFollowingList = async (req, res) => {
     try {
         const { username } = req.params;
@@ -45,8 +64,6 @@ const getFollowingList = async (req, res) => {
         res.status(500).json({ error: 'Erro ao buscar amigos' });
     }
 };
-
-// [GET] /api/isfollowing/:username
 const getIsFollowing = async (req, res) => {
     try {
         const { username: userToCheck } = req.params; // Quem o utilizador está a ver
@@ -55,7 +72,6 @@ const getIsFollowing = async (req, res) => {
         if (!currentUsername) {
             return res.status(400).json({ error: "Follower não especificado" });
         }
-
         const profile = await Profile.findByUser(currentUsername); // 1. Encontra o perfil do utilizador ATUAL
         const isFollowing = await profile.isFollowing(userToCheck); // 2. Pergunta-lhe se ele segue o outro
         
@@ -65,8 +81,6 @@ const getIsFollowing = async (req, res) => {
         res.status(500).json({ error: 'Erro ao verificar' });
     }
 };
-
-// [POST] /api/follow
 const addFollow = async (req, res) => {
     try {
         const { follower, following } = req.body;
@@ -83,8 +97,6 @@ const addFollow = async (req, res) => {
         res.status(500).json({ error: 'Erro ao seguir' });
     }
 };
-
-// [POST] /api/unfollow
 const removeFollow = async (req, res) => {
     try {
         const { follower, following } = req.body;
@@ -102,9 +114,11 @@ const removeFollow = async (req, res) => {
     }
 };
 
+
 module.exports = {
   getProfileBio,
   updateProfileBio,
+  updateUserMood, // <-- MUDANÇA: Exporta a nova função
   getFollowingList,
   getIsFollowing,
   addFollow,

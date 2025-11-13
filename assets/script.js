@@ -40,6 +40,7 @@ function escapeHtml(s) {
 // ===================================================
 
 // --- Funções de Feed/Posts ---
+// (Estas funções permanecem iguais)
 async function apiGetPosts() {
   try {
     const response = await fetch(`/api/posts?user=${encodeURIComponent(currentUser)}`);
@@ -123,15 +124,55 @@ function renderComments(postId, comments) {
   container.innerHTML = comments.map(item => `<div class="meta"><strong>${escapeHtml(item.user)}</strong>: ${escapeHtml(item.text)}</div>`).join(""); 
 }
 
-// --- Funções de Perfil e Depoimentos ---
+// --- Funções de Perfil, Mood e Depoimentos ---
+
+// 👇 MUDANÇA: Esta função agora também carrega o Mood
 async function apiGetProfile(username) { 
   try {
     const res = await fetch(`/api/profile/${encodeURIComponent(username)}`);
     if (!res.ok) return;
     const data = await res.json();
+    
+    // Atualiza a Bio na página de perfil
     if (DOM.profileBioEl) DOM.profileBioEl.textContent = data.bio;
-  } catch (err) { console.error("Falha ao buscar bio:", err); }
+
+    // 👇 NOVO: Atualiza o Mood na barra de utilizador se for o utilizador atual
+    if (username === currentUser && DOM.userbarMood) {
+      DOM.userbarMood.textContent = data.mood || "✨";
+    }
+
+  } catch (err) { console.error("Falha ao buscar perfil:", err); }
 } 
+
+// 👇 NOVA FUNÇÃO: Atualizar o Mood
+async function apiUpdateMood() {
+  const currentMood = DOM.userbarMood.textContent;
+  const newMood = prompt("Qual é o seu novo mood?", currentMood);
+  
+  if (newMood === null || newMood.trim() === "") return; // Utilizador cancelou
+  
+  const mood = newMood.trim();
+  DOM.userbarMood.textContent = "Salvando...";
+  
+  try {
+    const res = await fetch('/api/profile/mood', { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify({ user: currentUser, mood: mood }) 
+    });
+    
+    if (!res.ok) throw new Error('Falha ao salvar');
+    
+    const data = await res.json();
+    DOM.userbarMood.textContent = data.mood; // Atualiza com o 'mood' confirmado pelo servidor
+    
+  } catch (err) {
+    console.error("Falha ao salvar mood:", err);
+    DOM.userbarMood.textContent = currentMood; // Reverte em caso de erro
+    alert("Não foi possível salvar seu mood.");
+  }
+}
+
 async function apiUpdateBio() {
   const newBio = prompt("Digite sua nova bio:", DOM.profileBioEl.textContent);
   if (newBio === null || newBio.trim() === "") return; 
@@ -174,6 +215,7 @@ function renderTestimonials(testimonials) {
 }
 
 // --- Funções de Fórum de Comunidades ---
+// (Estas funções permanecem iguais)
 async function apiGetCommunityPosts(communityId) {
     try {
         const res = await fetch(`/api/community/${communityId}/posts`);
@@ -219,6 +261,7 @@ function renderCommunityPosts(posts) {
 }
 
 // --- Lógica de Amigos e Entrar em Comunidades ---
+// (Estas funções permanecem iguais)
 async function apiGetFollowing(username) {
   try {
     const res = await fetch(`/api/following/${encodeURIComponent(username)}`);
@@ -247,7 +290,7 @@ async function apiJoinCommunity(communityId, button) {
     if (!res.ok) { throw new Error('Falha ao entrar na comunidade'); }
     const data = await res.json();
     renderJoinedCommunities([data.community]); 
-    activateCommunityView("topics", { community: data.community.id }); // MUDANÇA: Ir para Tópicos
+    activateCommunityView("topics", { community: data.community.id });
   } catch (err) { console.error("Erro ao entrar na comunidade:", err); alert("Falha ao entrar na comunidade."); button.disabled = false; button.textContent = "Entrar"; }
 }
 async function apiCreateCommunity(name, emoji, button) {
@@ -296,12 +339,10 @@ async function apiGetExploreCommunities() {
 function renderExploreCommunities(communities) {
   if (!DOM.communityListContainer) return;
   DOM.communityListContainer.innerHTML = ""; 
-
   if (communities.length === 0) {
     DOM.communityListContainer.innerHTML = "<div class='meta'>Nenhuma comunidade pública para entrar.</div>";
     return;
   }
-
   communities.forEach(community => {
     const node = document.createElement("div");
     node.className = "community-card-explore";
@@ -320,6 +361,7 @@ function renderExploreCommunities(communities) {
 // ===================================================
 // 3. LÓGICA DO CHAT (Socket.IO / "Agora")
 // ===================================================
+// (Esta secção permanece igual)
 function renderChannel(name) {
   activeChannel = name; 
   DOM.chatMessagesEl.innerHTML = ""; 
@@ -368,7 +410,7 @@ socket.on('newMessage', (data) => {
 // ===================================================
 // 4. EVENTOS (Conexões dos Botões)
 // ===================================================
-
+// (Esta secção permanece igual)
 function handlePostClick(e) {
   const userLink = e.target.closest('.post-username[data-username]');
   if (userLink) { viewedUsername = userLink.dataset.username; activateView("profile"); return; }
@@ -391,16 +433,13 @@ function handlePostClick(e) {
 // ===================================================
 // 5. LÓGICA DE TROCA DE VISÃO (Views)
 // ===================================================
-
+// (Esta secção permanece igual)
 function activateView(name, options = {}) {
   Object.values(DOM.views).forEach(view => view.hidden = true);
-  // 👇 CORREÇÃO DO BUG DE LAYOUT ESTÁ AQUI 👇
   DOM.appEl.classList.remove("view-home", "view-community");
-  
   document.querySelectorAll(".servers .server, .servers .add-btn").forEach(b => b.classList.remove("active"));
   
   if (name === "feed" || name === "explore" || name === "profile" || name === "explore-servers" || name === "create-community") {
-    
     DOM.appEl.classList.add("view-home");
     DOM.mainHeader.hidden = false;
     DOM.channelsEl.hidden = true;
@@ -423,10 +462,8 @@ function activateView(name, options = {}) {
     
   } 
 }
-
 function activateCommunityView(name, options = {}) {
     Object.values(DOM.views).forEach(view => view.hidden = true);
-    // 👇 CORREÇÃO DO BUG DE LAYOUT ESTÁ AQUI 👇
     DOM.appEl.classList.remove("view-home");
     DOM.appEl.classList.add("view-community");
     
@@ -462,10 +499,13 @@ function activateCommunityView(name, options = {}) {
 // ===================================================
 // 6. LÓGICA DE PERFIL DINÂMICO E SEGUIR
 // ===================================================
-
+// (Esta secção permanece igual)
 async function showDynamicProfile(username) {
   if (!username) return;
+  
+  // 👇 MUDANÇA: Esta função agora também carrega o mood do utilizador atual
   apiGetProfile(username);
+  
   apiGetTestimonials(username);
   apiGetFollowing(username); 
   DOM.profileNameEl.textContent = username;
@@ -553,7 +593,12 @@ function initializeUI() {
     DOM.profileNameEl = document.getElementById("profileName");
     DOM.profileBioEl = document.getElementById("profileBio");
     DOM.editBioBtn = document.getElementById("editBioBtn");
-    DOM.userbarMeBtn = document.getElementById("userbar-me"); 
+    DOM.userbarMeBtn = document.getElementById("userbar-me");
+    
+    // 👇 NOVAS Referências DOM para o Mood
+    DOM.userbarMoodContainer = document.getElementById("userbar-mood-container");
+    DOM.userbarMood = document.getElementById("userbar-mood");
+
     DOM.friendsContainer = document.getElementById("friends"); 
     DOM.testimonialsEl = document.getElementById("testimonials");
     DOM.testimonialInput = document.getElementById("testimonialInput");
@@ -606,6 +651,10 @@ function initializeUI() {
     DOM.viewTabs.forEach(b => b.addEventListener("click", () => { const viewName = b.dataset.view; activateView(viewName); }));
     DOM.btnExplore.addEventListener("click", () => activateView("explore"));
     DOM.userbarMeBtn.addEventListener("click", () => { viewedUsername = currentUser; activateView("profile"); });
+    
+    // 👇 NOVO Evento: Clicar no Mood
+    DOM.userbarMoodContainer.addEventListener("click", apiUpdateMood);
+
     DOM.headerHomeBtn.addEventListener("click", () => { activateView("feed"); });
     DOM.homeBtn.addEventListener("click", () => { activateView("feed"); });
     DOM.exploreServersBtn.addEventListener("click", () => { activateView("explore-servers"); });
@@ -651,5 +700,10 @@ socket.on('connect', () => {
   
   // 3. Carrega os dados iniciais
   apiGetJoinedCommunities(); 
+  
+  // 👇 NOVO: Carrega o perfil do utilizador atual (para buscar a bio e o mood)
+  apiGetProfile(currentUser);
+  
+  // 4. Ativa a visão inicial
   activateView("feed"); 
 });

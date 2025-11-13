@@ -4,9 +4,10 @@ const db = require('./db');
 class Profile {
     
     // O "nascimento" de um perfil
-    constructor({ user, bio }) {
+    constructor({ user, bio, mood }) { // <-- MUDANÇA: Adicionado 'mood'
         this.user = user;
         this.bio = bio || "Nenhuma bio definida.";
+        this.mood = mood || "✨ novo por aqui!"; // <-- MUDANÇA: Adicionado 'mood' com um default
     }
 
     // --- MÉTODOS DE INSTÂNCIA ---
@@ -15,38 +16,29 @@ class Profile {
     async save() {
         // "Upsert": Insere se não existir, atualiza se existir
         const result = await db.query(
-            'INSERT INTO profiles ("user", bio) VALUES ($1, $2) ON CONFLICT ("user") DO UPDATE SET bio = $2 RETURNING bio',
-            [this.user, this.bio]
+            // 👇 MUDANÇA: Adicionado 'mood' ao update
+            'INSERT INTO profiles ("user", bio, mood) VALUES ($1, $2, $3) ON CONFLICT ("user") DO UPDATE SET bio = $2, mood = $3 RETURNING *',
+            [this.user, this.bio, this.mood]
         );
-        this.bio = result.rows[0].bio; // Garante que o objeto tem o dado da BD
+        this.bio = result.rows[0].bio;
+        this.mood = result.rows[0].mood; // <-- MUDANÇA: Atualiza o mood no objeto
         return this;
     }
 
-    // Este perfil (this.user) começa a seguir outro utilizador
+    // (O resto dos teus métodos de instância: follow, unfollow, getFollowing, isFollowing)
+    // ... (eles ficam iguais) ...
     async follow(userToFollow) {
-        await db.query(
-            'INSERT INTO follows (follower_user, following_user) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-            [this.user, userToFollow]
-        );
+        await db.query('INSERT INTO follows (follower_user, following_user) VALUES ($1, $2) ON CONFLICT DO NOTHING', [this.user, userToFollow]);
         return true;
     }
-
-    // Este perfil (this.user) deixa de seguir outro utilizador
     async unfollow(userToUnfollow) {
-        await db.query(
-            'DELETE FROM follows WHERE follower_user = $1 AND following_user = $2',
-            [this.user, userToUnfollow]
-        );
+        await db.query('DELETE FROM follows WHERE follower_user = $1 AND following_user = $2', [this.user, userToUnfollow]);
         return true;
     }
-
-    // Obtém a lista de quem este perfil (this.user) segue
     async getFollowing() {
         const result = await db.query('SELECT following_user FROM follows WHERE follower_user = $1', [this.user]);
-        return result.rows.map(r => r.following_user); // Retorna ['ana', 'rui']
+        return result.rows.map(r => r.following_user);
     }
-
-    // Verifica se este perfil (this.user) segue um utilizador específico
     async isFollowing(userToCheck) {
         const result = await db.query('SELECT 1 FROM follows WHERE follower_user = $1 AND following_user = $2', [this.user, userToCheck]);
         return result.rows.length > 0;
@@ -56,12 +48,23 @@ class Profile {
     
     // Encontra um perfil por nome de utilizador
     static async findByUser(username) {
-        const result = await db.query('SELECT * FROM profiles WHERE "user" = $1', [username]);
+        // 👇 MUDANÇA: Seleciona 'mood'
+        const result = await db.query('SELECT "user", bio, mood FROM profiles WHERE "user" = $1', [username]);
         if (result.rows[0]) {
             return new Profile(result.rows[0]); // Retorna um objeto Profile
         }
         // Se não houver 'bio' na BD, criamos um perfil "virtual"
-        return new Profile({ user: username, bio: "Nenhuma bio definida." });
+        return new Profile({ user: username, bio: "Nenhuma bio definida.", mood: "✨ novo por aqui!" });
+    }
+
+    // 👇 NOVO MÉTODO ESTÁTICO (Especializado em mudar SÓ o mood)
+    static async updateMood(username, newMood) {
+        // "Upsert" que afeta apenas o 'mood'
+        const result = await db.query(
+            'INSERT INTO profiles ("user", mood) VALUES ($1, $2) ON CONFLICT ("user") DO UPDATE SET mood = $2 RETURNING mood',
+            [username, newMood]
+        );
+        return result.rows[0].mood;
     }
 }
 

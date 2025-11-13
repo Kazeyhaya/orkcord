@@ -3,12 +3,12 @@ const express = require('express');
 const router = express.Router();
 const profileController = require('../controllers/profile.controller');
 
-// Nota: Estes caminhos são relativos ao que definirmos no server.js.
-// Vamos montar este router em '/api'
-
 // Rotas de Perfil
 router.get('/profile/:username', profileController.getProfileBio);
 router.post('/profile', profileController.updateProfileBio);
+
+// 👇 NOVA ROTA
+router.post('/profile/mood', profileController.updateUserMood);
 
 // Rotas de "Seguir" (Amigos)
 router.get('/following/:username', profileController.getFollowingList);

@@ -1,3 +1,4 @@
+// src/models/db.js
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -11,10 +12,18 @@ const pool = new Pool({
 async function setupDatabase() {
   const client = await pool.connect();
   try {
-    // (Todas as tuas queries CREATE TABLE IF NOT EXISTS vêm para aqui)
+    // (O resto das tuas tabelas CREATE TABLE)
     await client.query(`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, channel TEXT NOT NULL, "user" TEXT NOT NULL, message TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS posts (id SERIAL PRIMARY KEY, "user" TEXT NOT NULL, text TEXT NOT NULL, likes INT DEFAULT 0, timestamp TIMESTAMPTZ DEFAULT NOW())`);
-    await client.query(`CREATE TABLE IF NOT EXISTS profiles ("user" TEXT PRIMARY KEY, bio TEXT)`);
+    
+    // 👇 MUDANÇA AQUI 👇
+    await client.query(`CREATE TABLE IF NOT EXISTS profiles (
+        "user" TEXT PRIMARY KEY, 
+        bio TEXT,
+        mood TEXT
+    )`);
+    // 👆 MUDANÇA AQUI 👆
+    
     await client.query(`CREATE TABLE IF NOT EXISTS testimonials (id SERIAL PRIMARY KEY, "from_user" TEXT NOT NULL, "to_user" TEXT NOT NULL, text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS comments (id SERIAL PRIMARY KEY, post_id INT NOT NULL REFERENCES posts(id) ON DELETE CASCADE, "user" TEXT NOT NULL, text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS follows (id SERIAL PRIMARY KEY, follower_user TEXT NOT NULL, following_user TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW(), UNIQUE(follower_user, following_user))`);
@@ -24,7 +33,7 @@ async function setupDatabase() {
     await client.query(`CREATE TABLE IF NOT EXISTS channels (id SERIAL PRIMARY KEY, community_id INT NOT NULL REFERENCES communities(id) ON DELETE CASCADE, name TEXT NOT NULL, is_voice BOOLEAN DEFAULT FALSE, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     
     console.log('Tabelas verificadas/criadas.');
-    await seedDatabase(client); // Chama a função de popular
+    await seedDatabase(client);
     
   } catch (err) {
     console.error('Erro ao criar tabelas:', err);
@@ -33,7 +42,9 @@ async function setupDatabase() {
   }
 }
 
-// Função para popular dados (recebe o 'client' como argumento)
+// (O resto do teu ficheiro db.js, incluindo seedDatabase, fica igual)
+// ... (resto do ficheiro) ...
+
 async function seedDatabase(client) {
   try {
     const res = await client.query('SELECT 1 FROM communities LIMIT 1');
