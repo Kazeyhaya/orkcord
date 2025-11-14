@@ -165,11 +165,12 @@ function renderComments(postId, comments) {
 
 // --- Funções de Perfil, Mood, Avatar ---
 
-// 👇 MUDANÇA: 'apiGetProfile' agora recebe 'profile' e 'ratings' 👇
 async function apiGetProfile(username) { 
   try {
     const res = await fetch(`/api/profile/${encodeURIComponent(username)}`);
-    if (!res.ok) return;
+    if (!res.ok) {
+        throw new Error(`Falha na API: ${res.status}`); // Força o 'catch'
+    }
     
     const data = await res.json(); 
     const profileData = data.profile;
@@ -182,8 +183,6 @@ async function apiGetProfile(username) {
       DOM.profileMoodEl.textContent = `Mood: ${profileData.mood || "✨"}`;
     }
     renderAvatar(DOM.profileAvatarEl, profileData);
-    
-    // Renderiza as avaliações recebidas
     renderRatings(ratingsData); 
 
     if (username === currentUser) {
@@ -195,17 +194,17 @@ async function apiGetProfile(username) {
 
   } catch (err) { 
     console.error("Falha ao buscar perfil:", err);
+    // 👇 MUDANÇA: Define o estado de erro
     if (DOM.profileBioEl) DOM.profileBioEl.textContent = "Erro ao carregar bio.";
     if (DOM.profileMoodEl) DOM.profileMoodEl.textContent = "Mood: (erro)";
+    if (DOM.ratingsDisplayContainer) DOM.ratingsDisplayContainer.innerHTML = "<div class='meta'>Erro ao carregar avaliações.</div>";
   }
 } 
-// 👆 FIM DA MUDANÇA 👆
 
-// 👇 NOVO: Função para renderizar as avaliações na tela 👇
 function renderRatings(ratings) {
     if (!DOM.ratingsDisplayContainer) return;
     
-    DOM.ratingsDisplayContainer.innerHTML = ""; // Limpa o container
+    DOM.ratingsDisplayContainer.innerHTML = "";
     
     const items = [
         { icon: '😊', label: 'Confiável', count: ratings.confiavel },
@@ -231,9 +230,7 @@ function renderRatings(ratings) {
         }
     });
 }
-// 👆 FIM DA NOVA FUNÇÃO 👆
 
-// 👇 NOVO: Função para enviar um voto de avaliação 👇
 async function apiAddRating(ratingType) {
     try {
         const res = await fetch('/api/profile/rate', {
@@ -251,7 +248,6 @@ async function apiAddRating(ratingType) {
             throw new Error(err.error);
         }
         
-        // Esconde os botões e recarrega o perfil para mostrar o novo voto
         DOM.ratingsVoteContainer.hidden = true;
         apiGetProfile(viewedUsername); 
         
@@ -260,7 +256,6 @@ async function apiAddRating(ratingType) {
         alert(`Erro ao avaliar: ${err.message}`);
     }
 }
-// 👆 FIM DA NOVA FUNÇÃO 👆
 
 async function apiUpdateMood() {
   const currentMood = DOM.userbarMood.textContent;
@@ -768,38 +763,44 @@ function activateCommunityView(name, options = {}) {
 // ===================================================
 // 6. LÓGICA DE PERFIL DINÂMICO E SEGUIR
 // ===================================================
+
+// 👇 MUDANÇA: 'showDynamicProfile' agora limpa os dados antigos 👇
 async function showDynamicProfile(username) {
   if (!username) return;
-  
-  apiGetProfile(username);
-  apiGetTestimonials(username);
-  apiGetFollowing(username); 
+
+  // 1. Limpa os dados do perfil anterior (para evitar "fantasmas")
   DOM.profileNameEl.textContent = username;
+  DOM.profileBioEl.textContent = "Carregando bio...";
+  DOM.profileMoodEl.textContent = "Mood: ...";
+  DOM.ratingsDisplayContainer.innerHTML = "<div class='meta'>Carregando avaliações...</div>";
+  DOM.testimonialsEl.innerHTML = "<div class='meta'>Carregando depoimentos...</div>";
+  DOM.friendsContainer.innerHTML = "<div class='meta'>Carregando amigos...</div>";
+  renderAvatar(DOM.profileAvatarEl, { user: username, avatar_url: null });
   
   DOM.profileAvatarEl.classList.remove('is-owner');
   DOM.avatarUploadLabel.style.display = 'none';
-
-  DOM.editBioBtn.disabled = true; 
+  DOM.editBioBtn.disabled = true;
+  DOM.ratingsVoteContainer.hidden = true;
+  DOM.testimonialFormContainer.hidden = true;
+  DOM.dmBtn.style.display = 'none';
   
-  // Esconde/Mostra os botões de avaliação
-  if (username === currentUser) {
-    DOM.ratingsVoteContainer.hidden = true;
-  } else {
-    DOM.ratingsVoteContainer.hidden = false;
-  }
+  // 2. Busca os novos dados
+  apiGetProfile(username);
+  apiGetTestimonials(username);
+  apiGetFollowing(username); 
   
+  // 3. Define os botões e formulários
   if (username === currentUser) {
     DOM.editBioBtn.textContent = "Editar bio";
     DOM.editBioBtn.onclick = apiUpdateBio;
     DOM.editBioBtn.disabled = false;
+    DOM.editBioBtn.style.display = 'flex';
     DOM.profileAvatarEl.classList.add('is-owner');
-    DOM.testimonialFormContainer.hidden = true;
-    DOM.dmBtn.style.display = 'none';
     
   } else {
-    DOM.editBioBtn.disabled = false;
     DOM.testimonialFormContainer.hidden = false;
     DOM.dmBtn.style.display = 'flex';
+    DOM.ratingsVoteContainer.hidden = false;
     DOM.dmBtn.onclick = () => startDM(username);
     
     try {
@@ -812,12 +813,18 @@ async function showDynamicProfile(username) {
         DOM.editBioBtn.textContent = "Seguir"; 
         DOM.editBioBtn.onclick = () => apiFollow(username);
       }
+      DOM.editBioBtn.disabled = false;
+      DOM.editBioBtn.style.display = 'flex';
     } catch (err) {
       console.error("Erro ao verificar 'follow':", err);
       DOM.editBioBtn.textContent = "Erro";
+      DOM.editBioBtn.style.display = 'flex';
     }
   }
 }
+// 👆 FIM DA MUDANÇA 👆
+
+
 async function apiFollow(username) {
   DOM.editBioBtn.disabled = true;
   try {
@@ -929,7 +936,6 @@ function mapAppDOM() {
     DOM.topicContentInput = document.getElementById("topic-content");
     DOM.btnCancelTopic = document.getElementById("btn-cancel-topic");
 
-    // 👇 NOVO: IDs das Avaliações 👇
     DOM.ratingsDisplayContainer = document.getElementById("ratings-display-container");
     DOM.ratingsVoteContainer = document.getElementById("ratings-vote-container");
     DOM.ratingVoteButtons = document.querySelectorAll("#ratings-vote-container .mini-btn");
@@ -1025,7 +1031,6 @@ function bindAppEvents() {
         });
     });
     
-    // 👇 NOVO: Evento de clique para os botões de avaliação
     DOM.ratingVoteButtons.forEach(button => {
         button.addEventListener("click", () => {
             const ratingType = button.dataset.rating;
