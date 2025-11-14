@@ -167,7 +167,6 @@ function renderComments(postId, comments) {
 
 async function apiGetProfile(username) { 
   try {
-    // 👇 MUDANÇA: Adiciona o '?viewer=' para sabermos quem está a ver o perfil
     const res = await fetch(`/api/profile/${encodeURIComponent(username)}?viewer=${encodeURIComponent(currentUser)}`);
     
     if (!res.ok) {
@@ -176,7 +175,7 @@ async function apiGetProfile(username) {
     
     const data = await res.json(); 
     const profileData = data.profile;
-    const ratingsData = data.ratings; // Isto agora é { totals: {...}, userVotes: [...] }
+    const ratingsData = data.ratings; 
     
     if (DOM.profileBioEl) {
       DOM.profileBioEl.textContent = profileData.bio;
@@ -186,7 +185,6 @@ async function apiGetProfile(username) {
     }
     renderAvatar(DOM.profileAvatarEl, profileData);
     
-    // 👇 MUDANÇA: Passa o objeto 'ratings' inteiro
     renderRatings(ratingsData); 
 
     if (username === currentUser) {
@@ -204,12 +202,11 @@ async function apiGetProfile(username) {
   }
 } 
 
-// 👇 FUNÇÃO ATUALIZADA (renderRatings) 👇
 function renderRatings(ratings) {
     if (!DOM.ratingsDisplayContainer) return;
     
-    const totals = ratings.totals; // ex: { confiavel: 1, legal: 0, ... }
-    const userVotes = ratings.userVotes || []; // ex: ['confiavel']
+    const totals = ratings.totals; 
+    const userVotes = ratings.userVotes || []; 
 
     DOM.ratingsDisplayContainer.innerHTML = "";
     
@@ -219,7 +216,6 @@ function renderRatings(ratings) {
         { key: 'divertido', icon: '🥳', label: 'Divertido', count: totals.divertido }
     ];
     
-    // 1. Renderiza os totais
     if (items.every(item => item.count === 0)) {
         DOM.ratingsDisplayContainer.innerHTML = "<div class='meta'>Ainda não há avaliações.</div>";
     } else {
@@ -237,10 +233,8 @@ function renderRatings(ratings) {
         });
     }
     
-    // 2. Atualiza o estilo dos botões de votação
     DOM.ratingVoteButtons.forEach(button => {
         const ratingType = button.dataset.rating;
-        // Se o voto do utilizador existe para este tipo, adiciona a classe 'active'
         if (userVotes.includes(ratingType)) {
             button.classList.add('active');
         } else {
@@ -248,10 +242,7 @@ function renderRatings(ratings) {
         }
     });
 }
-// 👆 FIM DA ATUALIZAÇÃO 👆
 
-// 👇 FUNÇÃO ATUALIZADA (apiAddRating) 👇
-// (Esta função agora é apenas para ADICIONAR)
 async function apiAddRating(ratingType) {
     try {
         const res = await fetch('/api/profile/rate', {
@@ -269,7 +260,6 @@ async function apiAddRating(ratingType) {
             throw new Error(err.error);
         }
         
-        // Atualiza o perfil (com os novos votos)
         apiGetProfile(viewedUsername); 
         
     } catch (err) {
@@ -277,12 +267,10 @@ async function apiAddRating(ratingType) {
         alert(`Erro ao avaliar: ${err.message}`);
     }
 }
-// 👆 FIM DA ATUALIZAÇÃO 👆
 
-// 👇 NOVA FUNÇÃO (apiRemoveRating) 👇
 async function apiRemoveRating(ratingType) {
     try {
-        const res = await fetch('/api/profile/unrate', { // Chama a nova rota
+        const res = await fetch('/api/profile/unrate', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -297,7 +285,6 @@ async function apiRemoveRating(ratingType) {
             throw new Error(err.error);
         }
         
-        // Atualiza o perfil (com os votos removidos)
         apiGetProfile(viewedUsername); 
         
     } catch (err) {
@@ -305,7 +292,6 @@ async function apiRemoveRating(ratingType) {
         alert(`Erro ao remover avaliação: ${err.message}`);
     }
 }
-// 👆 FIM DA NOVA FUNÇÃO 👆
 
 
 async function apiUpdateMood() {
@@ -815,11 +801,9 @@ function activateCommunityView(name, options = {}) {
 // 6. LÓGICA DE PERFIL DINÂMICO E SEGUIR
 // ===================================================
 
-// 👇 MUDANÇA: 'showDynamicProfile' agora limpa os dados antigos 👇
 async function showDynamicProfile(username) {
   if (!username) return;
 
-  // 1. Limpa os dados do perfil anterior (para evitar "fantasmas")
   DOM.profileNameEl.textContent = username;
   DOM.profileBioEl.textContent = "Carregando bio...";
   DOM.profileMoodEl.textContent = "Mood: ...";
@@ -828,7 +812,6 @@ async function showDynamicProfile(username) {
   DOM.friendsContainer.innerHTML = "<div class='meta'>Carregando amigos...</div>";
   renderAvatar(DOM.profileAvatarEl, { user: username, avatar_url: null });
   
-  // Limpa os estilos dos botões de voto
   DOM.ratingVoteButtons.forEach(button => button.classList.remove('active'));
   
   DOM.profileAvatarEl.classList.remove('is-owner');
@@ -838,12 +821,10 @@ async function showDynamicProfile(username) {
   DOM.testimonialFormContainer.hidden = true;
   DOM.dmBtn.style.display = 'none';
   
-  // 2. Busca os novos dados
   apiGetProfile(username);
   apiGetTestimonials(username);
   apiGetFollowing(username); 
   
-  // 3. Define os botões e formulários
   if (username === currentUser) {
     DOM.editBioBtn.textContent = "Editar bio";
     DOM.editBioBtn.onclick = apiUpdateBio;
@@ -938,8 +919,6 @@ function mapAppDOM() {
     DOM.profileBioEl = document.getElementById("profileBio");
     DOM.profileMoodEl = document.getElementById("profileMood");
     DOM.editBioBtn = document.getElementById("editBioBtn");
-    DOM.btnMobileMenu = document.getElementById("btn-mobile-menu");
-    DOM.serversList = document.querySelector(".servers");
     
     DOM.userAvatarEl = document.getElementById("userAvatar");
     DOM.avatarUploadInput = document.getElementById("avatar-upload-input");
@@ -1013,6 +992,10 @@ function mapAppDOM() {
         "community-members": DOM.communityMembersView,
         "create-topic": DOM.createTopicView
     };
+
+    // 👇 ADICIONADO PARA O MENU HAMBÚRGUER 👇
+    DOM.btnMobileMenu = document.getElementById("btn-mobile-menu");
+    DOM.serversList = document.querySelector(".servers");
 }
 
 function bindAppEvents() {
@@ -1031,16 +1014,6 @@ function bindAppEvents() {
     DOM.headerHomeBtn.addEventListener("click", () => { activateView("feed"); });
     DOM.homeBtn.addEventListener("click", () => { activateView("feed"); });
     DOM.exploreServersBtn.addEventListener("click", () => { activateView("explore-servers"); });
-    DOM.btnMobileMenu.addEventListener("click", () => {
-    DOM.serversList.classList.toggle("is-open");
-    DOM.serversList.addEventListener("click", (e) => {
-  // Se o ecrã for pequeno E o menu estiver aberto E clicámos num botão
-  if (window.innerWidth <= 640 && DOM.serversList.classList.contains("is-open")) {
-      if (e.target.closest(".server") || e.target.closest(".add-btn")) {
-          DOM.serversList.classList.remove("is-open");
-      }
-  }
-});
     
     DOM.modalCancelBtn.addEventListener("click", () => {
         DOM.modalView.hidden = true;
@@ -1095,22 +1068,31 @@ function bindAppEvents() {
         });
     });
     
-    // 👇 EVENT LISTENER ATUALIZADO (para os botões de votação) 👇
     DOM.ratingVoteButtons.forEach(button => {
         button.addEventListener("click", () => {
             const ratingType = button.dataset.rating;
             
-            // Verifica se o botão já está ativo
             if (button.classList.contains('active')) {
-                // Se está ativo, remove o voto
                 apiRemoveRating(ratingType);
             } else {
-                // Se não está ativo, adiciona o voto
                 apiAddRating(ratingType);
             }
         });
     });
-    // 👆 FIM DA ATUALIZAÇÃO 👆
+
+    // 👇 ADICIONADO PARA O MENU HAMBÚRGUER 👇
+    DOM.btnMobileMenu.addEventListener("click", () => {
+        DOM.serversList.classList.toggle("is-open");
+    });
+
+    DOM.serversList.addEventListener("click", (e) => {
+        // Se o ecrã for pequeno E o menu estiver aberto E clicámos num botão
+        if (window.innerWidth <= 640 && DOM.serversList.classList.contains("is-open")) {
+            if (e.target.closest(".server") || e.target.closest(".add-btn")) {
+                DOM.serversList.classList.remove("is-open");
+            }
+        }
+    });
 }
 
 function startApp() {
