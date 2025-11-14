@@ -47,8 +47,6 @@ a{color:inherit;text-decoration:none}
   backdrop-filter: blur(6px);
 }
 .brand{display:flex;align-items:center;gap:12px;font-weight:700;letter-spacing:.4px}
-
-/* 👇 MUDANÇA: Revertido para o estilo original 👇 */
 .brand-badge{
   width:36px;
   height:36px;
@@ -65,8 +63,6 @@ a{color:inherit;text-decoration:none}
   height: 100%;
   object-fit: contain;
 }
-/* 👆 FIM DA MUDANÇA 👆 */
-
 .brand-title{display:flex;gap:8px;align-items:baseline}
 .header-actions{display:flex;gap:8px}
 .view-tabs{display:flex;gap:8px}
@@ -80,21 +76,17 @@ a{color:inherit;text-decoration:none}
 .server:hover{transform: translateY(-2px);border-radius:16px}
 .server.active{background:linear-gradient(135deg, var(--orkut-pink), var(--orkut-blue))}
 .server .emoji{font-size:22px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))}
-
-/* 👇 MUDANÇA: Estilo para o botão Home com o logo 👇 */
 #home-btn {
-    background: #1e1f22; /* Fundo escuro */
-    padding: 8px; /* Espaço para o logo respirar */
+    background: #1e1f22;
+    padding: 8px;
 }
 #home-btn:hover {
-    border-radius: 16px; /* Mantém o hover */
+    border-radius: 16px;
 }
 #home-btn.active {
-    background: #1e1f22; /* Fundo escuro mesmo quando ativo */
-    border: 1px solid var(--orkut-blue); /* Borda azul quando ativo */
+    background: #1e1f22;
+    border: 1px solid var(--orkut-blue);
 }
-/* 👆 FIM DA MUDANÇA 👆 */
-
 .divider{width:24px;height:2px;background:rgba(255,255,255,.08);border-radius:1px;margin:8px 0}
 .add-btn{width:52px;height:52px;border-radius:50%;border:1px dashed rgba(255,255,255,.18);color:var(--text-secondary);display:grid;place-items:center;cursor:pointer;transition:.2s;background: transparent}
 .add-btn:hover{color:#fff;border-color:rgba(255,255,255,.4)}
@@ -537,3 +529,38 @@ a{color:inherit;text-decoration:none}
   align-items: center;
   box-shadow: var(--shadow);
 }
+
+/* 👇 NOVO: Estilos do Modal de Input Genérico 👇 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 10, 10, 0.5);
+  backdrop-filter: blur(10px);
+  z-index: 101; /* Mais alto que o login */
+  display: none;
+}
+.modal-overlay[hidden] {
+  display: none;
+}
+.modal-overlay:not([hidden]) {
+  display: grid;
+}
+
+.modal-card {
+  background: var(--discord-panel);
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: var(--radius);
+  padding: 20px;
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: var(--shadow);
+}
+/* 👆 FIM DOS NOVOS ESTILOS 👆 */

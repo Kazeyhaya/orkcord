@@ -25,13 +25,24 @@
     </form>
   </div>
 
-
+  <div class="modal-overlay" id="input-modal" hidden>
+    <form class="modal-card" id="modal-form">
+      <h3 id="modal-title" style="margin-bottom: 15px;">Título do Modal</h3>
+      
+      <textarea class="input" id="modal-input" required style="width: 100%; min-height: 80px;"></textarea>
+      
+      <div style="display: flex; gap: 10px; width: 100%; margin-top: 10px;">
+        <button class="mini-btn" type="button" id="modal-cancel-btn" style="flex: 1;">Cancelar</button>
+        <button class="send" type="submit" id="modal-save-btn" style="flex: 2;">Salvar</button>
+      </div>
+    </form>
+  </div>
   <div class="app" hidden>
     <aside class="servers" aria-label="Comunidades">
-      
       <div id="home-btn" class="server active" title="Agora">
         <img src="/assets/Agora-logo.png" alt="Agora Home" style="width: 100%; height: 100%; object-fit: contain;">
       </div>
+      
       <div class="divider"></div>
       <div id="joined-servers-list"></div>
       <div class="divider"></div>
@@ -41,7 +52,6 @@
 
     <header class="header" role="banner">
       <div class="brand" aria-label="Agora" id="header-home-btn">
-        
         <div class="brand-badge">A</div>
         <div class="brand-title">Agora</div>
       </div>

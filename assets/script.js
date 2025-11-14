@@ -35,6 +35,37 @@ function renderAvatar(element, { user, avatar_url }) {
   }
 }
 
+// 👇 NOVO: Função para abrir o Modal de Input Genérico
+/**
+ * Abre um modal para pedir input ao utilizador.
+ * @param {object} options
+ * @param {string} options.title - O título do modal
+ * @param {string} options.initialValue - O valor inicial do textarea
+ * @param {string} options.placeholder - O placeholder do textarea
+ * @param {function(string): void} options.onSave - Função callback chamada com o novo valor
+ */
+function openInputModal({ title, initialValue = '', placeholder = '', onSave }) {
+    DOM.modalTitle.textContent = title;
+    DOM.modalInput.value = initialValue;
+    DOM.modalInput.placeholder = placeholder;
+    DOM.modalView.hidden = false;
+    DOM.modalInput.focus();
+    
+    // Define o que o botão "Salvar" faz
+    DOM.modalForm.onsubmit = (e) => {
+        e.preventDefault();
+        const newValue = DOM.modalInput.value.trim();
+        
+        // Só executa o 'onSave' se o valor for válido
+        if (newValue) {
+            onSave(newValue);
+        }
+        
+        DOM.modalView.hidden = true; // Fecha o modal
+    };
+}
+// 👆 FIM DA NOVA FUNÇÃO
+
 // ===================================================
 // 2. LÓGICA DE API E RENDERIZAÇÃO
 // ===================================================
@@ -119,12 +150,30 @@ async function apiGetComments(postId) {
     renderComments(postId, data.comments || []);
   } catch (err) { console.error(`Falha ao buscar comentários para o post ${postId}:`, err); }
 }
-async function apiCreateComment(postId, text) {
-  try {
-    await fetch(`/api/posts/${postId}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: currentUser, text: text }) });
-    apiGetComments(postId); 
-  } catch (err) { console.error("Falha ao criar comentário:", err); }
+
+// 👇 MUDANÇA: 'apiCreateComment' agora não precisa de 'text', 
+// pois o 'openInputModal' é que o vai obter.
+async function apiCreateComment(postId) {
+  openInputModal({
+    title: "Escreva um comentário",
+    placeholder: "Seja simpático...",
+    initialValue: "",
+    onSave: async (text) => {
+      try {
+        await fetch(`/api/posts/${postId}/comments`, { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ user: currentUser, text: text }) 
+        });
+        apiGetComments(postId); // Recarrega os comentários
+      } catch (err) { 
+        console.error("Falha ao criar comentário:", err); 
+        alert("Falha ao salvar comentário.");
+      }
+    }
+  });
 }
+
 function renderComments(postId, comments) {
   const container = document.getElementById(`comments-for-${postId}`);
   if (!container) return; 
@@ -163,37 +212,56 @@ async function apiGetProfile(username) {
   }
 } 
 
+// 👇 MUDANÇA: 'apiUpdateMood' agora usa o 'openInputModal'
 async function apiUpdateMood() {
   const currentMood = DOM.userbarMood.textContent;
-  const newMood = prompt("Qual é o seu novo mood?", currentMood);
-  if (newMood === null || newMood.trim() === "") return;
-  const mood = newMood.trim();
-  DOM.userbarMood.textContent = "Salvando...";
-  try {
-    const res = await fetch('/api/profile/mood', { 
-      method: 'POST', 
-      headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify({ user: currentUser, mood: mood }) 
-    });
-    if (!res.ok) throw new Error('Falha ao salvar');
-    const data = await res.json();
-    DOM.userbarMood.textContent = data.mood;
-  } catch (err) {
-    console.error("Falha ao salvar mood:", err);
-    DOM.userbarMood.textContent = currentMood;
-    alert("Não foi possível salvar seu mood.");
-  }
+  
+  openInputModal({
+    title: "Qual é o seu novo mood?",
+    initialValue: currentMood,
+    onSave: async (newMood) => {
+      DOM.userbarMood.textContent = "Salvando...";
+      try {
+        const res = await fetch('/api/profile/mood', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ user: currentUser, mood: newMood }) 
+        });
+        if (!res.ok) throw new Error('Falha ao salvar');
+        const data = await res.json();
+        DOM.userbarMood.textContent = data.mood;
+      } catch (err) {
+        console.error("Falha ao salvar mood:", err);
+        DOM.userbarMood.textContent = currentMood;
+        alert("Não foi possível salvar seu mood.");
+      }
+    }
+  });
 }
 
+// 👇 MUDANÇA: 'apiUpdateBio' agora usa o 'openInputModal'
 async function apiUpdateBio() {
-  const newBio = prompt("Digite sua nova bio:", DOM.profileBioEl.textContent);
-  if (newBio === null || newBio.trim() === "") return; 
-  try {
-    const res = await fetch('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: currentUser, bio: newBio.trim() }) });
-    if (!res.ok) return;
-    const data = await res.json();
-    if (DOM.profileBioEl) DOM.profileBioEl.textContent = data.bio;
-  } catch (err) { console.error("Falha ao salvar bio:", err); }
+  const currentBio = DOM.profileBioEl.textContent;
+  
+  openInputModal({
+    title: "Editar a sua bio",
+    initialValue: currentBio,
+    onSave: async (newBio) => {
+      try {
+        const res = await fetch('/api/profile', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ user: currentUser, bio: newBio }) 
+        });
+        if (!res.ok) throw new Error('Falha ao salvar');
+        const data = await res.json();
+        if (DOM.profileBioEl) DOM.profileBioEl.textContent = data.bio;
+      } catch (err) { 
+        console.error("Falha ao salvar bio:", err); 
+        alert("Falha ao salvar bio.");
+      }
+    }
+  });
 }
 
 async function apiUploadAvatar(event) {
@@ -481,9 +549,8 @@ function startDM(targetUser) {
 }
 
 
-// 👇 MUDANÇA: 'addMessageBubble' agora usa o 'avatar_url'
 function addMessageBubble(data) {
-  const { user, timestamp, message, avatar_url } = data; // Obtém o avatar_url
+  const { user, timestamp, message, avatar_url } = data;
   
   const item = document.createElement("div");
   item.className = "msg";
@@ -492,7 +559,6 @@ function addMessageBubble(data) {
   
   const avatarEl = document.createElement('div');
   avatarEl.className = 'avatar-display post-avatar';
-  // Passa os dados de avatar (incluindo o URL) para o renderAvatar
   renderAvatar(avatarEl, { user: user, avatar_url: avatar_url }); 
 
   item.innerHTML = `
@@ -505,7 +571,6 @@ function addMessageBubble(data) {
   DOM.chatMessagesEl.appendChild(item);
   if (isScrolledToBottom) { DOM.chatMessagesEl.scrollTop = DOM.chatMessagesEl.scrollHeight; }
 }
-// 👆 FIM DA MUDANÇA 👆
 
 function sendChatMessage() {
   const text = DOM.chatInputEl.value.trim();
@@ -531,6 +596,7 @@ socket.on('newMessage', (data) => {
 function handlePostClick(e) {
   const userLink = e.target.closest('.post-username[data-username]');
   if (userLink) { viewedUsername = userLink.dataset.username; activateView("profile"); return; }
+  
   const likeButton = e.target.closest('[data-like]');
   if (likeButton) {
     const postId = likeButton.dataset.like; 
@@ -538,11 +604,12 @@ function handlePostClick(e) {
     if (likeButton.classList.contains('liked')) { apiUnlikePost(postId); likeButton.classList.remove('liked'); likeButton.innerHTML = `❤ ${currentLikes - 1}`; } else { apiLikePost(postId); likeButton.classList.add('liked'); likeButton.innerHTML = `❤ ${currentLikes + 1}`; }
     return;
   }
+  
+  // 👇 MUDANÇA: 'prompt()' removido
   const commentButton = e.target.closest('[data-comment]');
   if (commentButton) {
     const postId = commentButton.dataset.comment;
-    const text = prompt("Digite seu comentário:"); 
-    if (text && text.trim()) { apiCreateComment(postId, text.trim()); }
+    apiCreateComment(postId); // Chama a nova função que abre o modal
     return;
   }
 }
@@ -629,7 +696,7 @@ async function showDynamicProfile(username) {
   
   if (username === currentUser) {
     DOM.editBioBtn.textContent = "Editar bio";
-    DOM.editBioBtn.onclick = apiUpdateBio; 
+    DOM.editBioBtn.onclick = apiUpdateBio; // Remove o prompt()
     DOM.editBioBtn.disabled = false;
     DOM.profileAvatarEl.classList.add('is-owner');
     
@@ -736,6 +803,15 @@ function mapAppDOM() {
     DOM.dmBtn = document.getElementById("dmBtn");
     DOM.communityCard = document.querySelector('.community-card');
     
+    // 👇 NOVO: IDs do Modal
+    DOM.modalView = document.getElementById("input-modal");
+    DOM.modalForm = document.getElementById("modal-form");
+    DOM.modalTitle = document.getElementById("modal-title");
+    DOM.modalInput = document.getElementById("modal-input");
+    DOM.modalSaveBtn = document.getElementById("modal-save-btn");
+    DOM.modalCancelBtn = document.getElementById("modal-cancel-btn");
+    // 👆 FIM DA MUDANÇA
+    
     DOM.exploreServersView = document.getElementById("view-explore-servers");
     DOM.exploreServersBtn = document.getElementById("explore-servers-btn");
     DOM.communityListContainer = document.getElementById("community-list-container");
@@ -789,6 +865,11 @@ function bindAppEvents() {
     DOM.headerHomeBtn.addEventListener("click", () => { activateView("feed"); });
     DOM.homeBtn.addEventListener("click", () => { activateView("feed"); });
     DOM.exploreServersBtn.addEventListener("click", () => { activateView("explore-servers"); });
+    
+    // 👇 NOVO: Evento para fechar o modal
+    DOM.modalCancelBtn.addEventListener("click", () => {
+        DOM.modalView.hidden = true;
+    });
     
     DOM.avatarUploadInput.addEventListener("change", apiUploadAvatar);
     DOM.profileAvatarEl.addEventListener("click", () => {
