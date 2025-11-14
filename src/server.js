@@ -3,37 +3,36 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const db = require('./models/db'); // Importa o nosso módulo de BD
+const db = require('./models/db');
 
 // --- CONFIGURAÇÃO INICIAL ---
-const app = express();
+const app = express(); // O 'app' que vamos exportar
 const server = http.createServer(app);
-const io = new Server(server); // Cria o servidor Socket.IO
+const io = new Server(server); 
 const port = process.env.PORT || 3000;
 
 // --- MIDDLEWARES ---
 app.use(express.json());
 app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
 
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
 
-// --- ROTAS DA API (TOTALMENTE REATORADAS) ---
 
-// 1. ROTAS DE POSTS (Feed, Likes, Comentários)
+// --- ROTAS DA API ---
 const postRoutes = require('./routes/post.routes');
 app.use('/api/posts', postRoutes);
 
-// 2. ROTAS DE PERFIL (Perfil, Seguir, Amigos)
 const profileRoutes = require('./routes/profile.routes');
-app.use('/api', profileRoutes); // Monta em /api para apanhar /api/profile, /api/follow, etc.
+app.use('/api', profileRoutes);
 
-// 3. ROTAS DE DEPOIMENTOS
 const testimonialRoutes = require('./routes/testimonial.routes');
 app.use('/api/testimonials', testimonialRoutes);
 
-// 4. ROTAS DE COMUNIDADES (Plural e Singular)
 const { communitiesRouter, communityRouter } = require('./routes/community.routes');
-app.use('/api/communities', communitiesRouter); // Rotas no plural (ex: /api/communities/explore)
-app.use('/api/community', communityRouter);   // Rotas no singular (ex: /api/community/join)
+app.use('/api/communities', communitiesRouter);
+app.use('/api/community', communityRouter);
 
 
 // --- ROTA PRINCIPAL (O HTML) ---
@@ -41,19 +40,24 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'agora.html')); 
 });
 
-// --- LÓGICA DO SOCKET.IO (REATORADO) ---
-// Importa o nosso novo "gestor" de chat
+// --- LÓGICA DO SOCKET.IO ---
 const { initializeSocket } = require('./socket/chat.handler');
-// Passa o nosso servidor 'io' para ele, para que ele possa "ligar-se"
 initializeSocket(io);
 
 
 // --- INICIAR O SERVIDOR ---
-db.setupDatabase().then(() => {
-  server.listen(port, () => {
-    console.log(`🚀 Agora a rodar na porta ${port}`);
+// Esta lógica só corre se o ficheiro NÃO estiver a ser importado (ex: nos testes)
+if (require.main === module) {
+  db.setupDatabase().then(() => {
+    server.listen(port, () => {
+      console.log(`🚀 Agora a rodar na porta ${port}`);
+    });
+  }).catch(err => {
+      console.error("Falha crítica ao iniciar a base de dados:", err);
+      process.exit(1);
   });
-}).catch(err => {
-    console.error("Falha crítica ao iniciar a base de dados:", err);
-    process.exit(1);
-});
+}
+
+// --- EXPORTAÇÃO ---
+// Exporta o 'app' (express) para que os testes o possam usar
+module.exports = app;
