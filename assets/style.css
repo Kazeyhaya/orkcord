@@ -31,7 +31,7 @@ a{color:inherit;text-decoration:none}
 /* Layout base */
 .app{
   display:grid;
-  height:100vh;
+  height:100dvh;
   gap:12px;
   padding:12px;
 }
