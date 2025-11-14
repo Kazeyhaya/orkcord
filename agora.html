@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agora - Comunidades e Chat</title>
-  
+
   <link rel="stylesheet" href="/assets/style.css">
   <meta name="color-scheme" content="dark">
 </head>
@@ -15,22 +15,23 @@
       <div class="brand-badge" style="margin-bottom: 12px; background: linear-gradient(135deg, var(--orkut-pink), var(--orkut-blue)); font-weight: bold; font-size: 24px;">A</div>
       <h2>Bem-vindo ao Agora</h2>
       <p class="meta" style="margin-bottom: 15px;">Digite um nome de usuário para entrar.</p>
-      
+
       <input class="input" id="login-username-input" placeholder="Seu nome de usuário..." required style="width: 100%; text-align: center;">
-      
+
       <button class="send" type="submit" style="width: 100%; margin-top: 10px;">Entrar</button>
     </form>
   </div>
 
 
   <div class="app" hidden>
+    
     <aside class="servers" aria-label="Comunidades">
       <div id="home-btn" class="server active" title="Agora" style="background: linear-gradient(135deg, var(--orkut-pink), var(--orkut-blue)); font-weight: bold; font-size: 24px;">A</div>
-      
+
       <div class="divider"></div>
       <div id="joined-servers-list"></div>
       <div class="divider"></div>
-      
+
       <button class="add-btn" id="explore-servers-btn" title="Explorar Comunidades">+</button>
     </aside>
 
@@ -42,27 +43,27 @@
       <div class="header-actions">
         <div class="view-tabs">
           <button class="pill active" data-view="feed">Feed</button>
+          <button class="pill" id="btn-explore">Explorar</button>
         </div>
-        <button class="pill" id="btn-explore">Explorar</button>
       </div>
     </header>
 
     <aside class="channels" aria-label="Canais" hidden>
       <div class="community-card">
         <div class="avatar-display community-avatar" id="community-avatar-channel">AG</div>
-        
+
         <div class="community-info">
           <div class="community-name" id="community-name-channel">Nome da Comunidade</div>
           <div class="community-sub" id="community-members-count">0 membros</div>
         </div>
       </div>
-      
+
       <div class="view-tabs" style="padding-left: 10px; margin-top: 10px;">
           <button class="pill active" data-community-view="topics">Tópicos</button>
           <button class="pill" data-community-view="chat-channels">Chat</button>
           <button class="pill" data-community-view="members">Membros</button>
       </div>
-      
+
       <div id="community-chat-channels">
           <div class="chan-section">
             <div class="chan-title">Canais de Texto</div>
@@ -108,7 +109,7 @@
         <button class="send" id="sendBtn">Enviar</button>
       </div>
     </main>
-    
+
     <section class="profile" id="view-profile" hidden>
       <div class="profile-top"><div class="chat-topic"><div class="topic-badge">Perfil</div><span class="meta">— Seu perfil social</span></div></div>
       <div class="profile-body">
@@ -140,17 +141,68 @@
       </div>
     </section>
 
-    <section class="feed" id="view-explore" hidden>...</section>
-    <section class="explore-servers" id="view-explore-servers" hidden>...</section>
-    <section class="create-community" id="view-create-community" hidden>...</section>
-    <section class="community-content feed" id="view-community-topics" hidden>...</section>
-    <section class="community-content profile-body" id="view-community-members" hidden>...</section>
+    <section class="feed" id="view-explore" hidden>
+      <div class="feed-top">
+        <div class="chat-topic"><div class="topic-badge">Explorar</div><span class="meta">— Posts de toda a rede</span></div>
+        <div class="chat-actions"><button class="icon-btn" id="btn-explore-refresh">🔄</button></div>
+      </div>
+      <div class="posts" id="explore-posts">
+        </div>
+    </section>
 
+    <section class="explore-servers" id="view-explore-servers" hidden>
+      <div class="explore-servers-top">
+        <div>
+          <h2>Explorar Comunidades</h2>
+          <div class="meta">Encontre seu novo grupo</div>
+        </div>
+        <button class="send" id="btn-show-create-community">Criar Comunidade</button>
+      </div>
+      <div class="community-list" id="community-list-container">
+        </div>
+    </section>
+
+    <section class="create-community" id="view-create-community" hidden>
+      <div class="explore-servers-top">
+        <div>
+          <h2>Criar sua Comunidade</h2>
+          <div class="meta">Dê um nome e um emoji para começar</div>
+        </div>
+        <button class="mini-btn" id="btn-cancel-create">Cancelar</button>
+      </div>
+      <div style="padding: 14px;">
+        <form class="card" id="create-community-form" style="max-width: 500px; margin: 0 auto;">
+          <label for="community-name">Nome da Comunidade</label>
+          <input class="input" id="community-name" placeholder="Minha Nova Comunidade" required style="width: 100%; margin-top: 5px;">
+          
+          <label for="community-emoji" style="margin-top: 15px;">Emoji (opcional)</label>
+          <input class="input" id="community-emoji" placeholder="✨" style="width: 100%; margin-top: 5px;">
+          
+          <button class="send" type="submit" style="width: 100%; margin-top: 20px;">Criar</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="community-content feed" id="view-community-topics" hidden>
+      <div class="feed-top">
+        <div class="chat-topic"><div class="topic-badge" id="current-community-name">Tópicos</div><span class="meta">— Posts da comunidade</span></div>
+        <div class="chat-actions"><button class="icon-btn" title="Novo Tópico">➕</button></div>
+      </div>
+      <div class="composer-feed">
+        <input class="input" id="communityPostInput" type="text" placeholder="Crie um novo tópico..." />
+        <button class="send" id="communityPostSend">Publicar Tópico</button>
+      </div>
+      <div class="posts" id="community-topic-list">
+        </div>
+    </section>
+
+    <section class="community-content profile-body" id="view-community-members" hidden>
+      </section>
 
     <footer class="userbar" role="contentinfo">
       <div class="me clickable" id="userbar-me">
         <div class="avatar-display userbar-avatar" id="userAvatar">VC</div>
-        
+
         <div>
           <div id="userName"><strong id="userName">Você</strong> <span class="meta">@orklover</span></div>
           <div class="meta clickable" id="userbar-mood-container" title="Clique para mudar o seu mood">
@@ -168,6 +220,6 @@
 
   <script src="/socket.io/socket.io.js" defer></script>
   <script src="/assets/script.js" defer></script>
-  
+
 </body>
 </html>

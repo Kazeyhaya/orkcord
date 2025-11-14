@@ -26,7 +26,7 @@ function renderAvatar(element, { user, avatar_url }) {
   if (!element) return;
 
   element.innerHTML = ""; // Limpa o texto (ex: "AL")
-  
+
   if (avatar_url) {
     // Se tem URL, coloca como imagem de fundo
     element.style.backgroundImage = `url(${avatar_url})`;
@@ -101,6 +101,7 @@ function renderPostList(containerElement, posts) {
     renderAvatar(avatarEl, { user: post.user, avatar_url: post.avatar_url });
 
     const postTime = new Date(post.timestamp).toLocaleString('pt-BR');
+<<<<<<< HEAD
     
     // Cria o resto do post
     const postContent = document.createElement('div');
@@ -115,6 +116,17 @@ function renderPostList(containerElement, posts) {
     node.appendChild(avatarEl);
     node.appendChild(postContent);
     
+=======
+
+    node.innerHTML = `
+      <div class="avatar-display post-avatar" style="background-image: none;">${escapeHtml(postUserInitial)}</div>
+      <div>
+        <div class="meta"><strong class="post-username" data-username="${escapeHtml(post.user)}">${escapeHtml(post.user)}</strong> • ${postTime}</div>
+        <div>${escapeHtml(post.text)}</div>
+        <div class="post-actions"><button class="mini-btn" data-like="${post.id}">❤ ${post.likes || 0}</button><button class="mini-btn" data-comment="${post.id}">Comentar</button></div>
+        <div class="comments" id="comments-for-${post.id}"></div>
+      </div>`;
+>>>>>>> 171fc9c0d186a1a21eae787244fe57c91727402a
     containerElement.appendChild(node);
     apiGetComments(post.id);
   });
@@ -147,9 +159,17 @@ async function apiGetProfile(username) {
   try {
     const res = await fetch(`/api/profile/${encodeURIComponent(username)}`);
     if (!res.ok) return;
+<<<<<<< HEAD
     
     const profileData = await res.json(); 
     
+=======
+
+    // 'data' agora contém { user, bio, mood, avatar_url }
+    const profileData = await res.json(); 
+
+    // Atualiza o perfil na Página de Perfil
+>>>>>>> 171fc9c0d186a1a21eae787244fe57c91727402a
     if (DOM.profileBioEl) {
       DOM.profileBioEl.textContent = profileData.bio;
     }
@@ -424,6 +444,7 @@ function renderExploreCommunities(communities) {
 // 3. LÓGICA DO CHAT (Socket.IO)
 // ===================================================
 function renderChannel(name) {
+<<<<<<< HEAD
   activeChannel = name; 
   DOM.chatMessagesEl.innerHTML = ""; 
   DOM.chatTopicBadge.textContent = `# ${name.replace("-", " ")}`;
@@ -465,12 +486,73 @@ socket.on('loadHistory', (messages) => {
 });
 socket.on('newMessage', (data) => {
   if (data.channel === activeChannel) { addMessageBubble(data); }
+=======
+    // 1. Limpa o estado visual anterior
+    document.querySelectorAll(".channel.active").forEach(c => c.classList.remove("active"));
+    // 2. Define o novo canal como ativo
+    document.querySelector(`.channel[data-channel="${name}"]`).classList.add("active");
+    // 3. Atualiza o estado global
+    activeChannel = name;
+    // 4. Atualiza o "Tópico" do chat
+    DOM.chatTopicBadge.textContent = `# ${name}`;
+    DOM.chatInputEl.placeholder = `Envie uma mensagem para #${name}`;
+    // 5. Limpa as mensagens antigas
+    DOM.chatMessagesEl.innerHTML = "<div class='meta' style='padding: 0 14px;'>Carregando histórico...</div>";
+    // 6. Pede ao servidor o histórico deste canal
+    socket.emit('joinChannel', { channel: name, user: currentUser });
+}
+function addMessageBubble({ user, timestamp, message }) {
+    const node = document.createElement("div");
+    node.className = "msg";
+    const userInitial = (user || "?").slice(0, 2).toUpperCase();
+    const time = new Date(timestamp).toLocaleTimeString('pt-BR');
+    
+    // NOTA: Usamos a nossa função de segurança aqui
+    const safeMessage = escapeHtml(message); 
+    
+    node.innerHTML = `
+      <div class="avatar-display post-avatar">${escapeHtml(userInitial)}</div> 
+      <div>
+        <div class="meta">
+          <strong>${escapeHtml(user)}</strong> • <span class="meta">${time}</span>
+        </div>
+        <div>${safeMessage}</div> 
+      </div>`;
+    DOM.chatMessagesEl.appendChild(node);
+    DOM.chatMessagesEl.scrollTop = DOM.chatMessagesEl.scrollHeight;
+}
+function sendChatMessage() {
+    const message = DOM.chatInputEl.value.trim();
+    if (!message) return;
+    
+    const data = {
+        user: currentUser,
+        message: message,
+        channel: activeChannel, // Envia para o canal ativo
+        timestamp: new Date()
+    };
+    
+    socket.emit('sendMessage', data);
+    DOM.chatInputEl.value = "";
+}
+socket.on('loadHistory', (messages) => {
+    DOM.chatMessagesEl.innerHTML = ""; // Limpa o "Carregando..."
+    if (!messages || messages.length === 0) {
+        DOM.chatMessagesEl.innerHTML = "<div class='meta' style='padding: 0 14px;'>Este canal está vazio. Envie a primeira mensagem!</div>";
+        return;
+    }
+    messages.forEach(msg => addMessageBubble(msg));
+});
+socket.on('newMessage', (data) => {
+    addMessageBubble(data);
+>>>>>>> 171fc9c0d186a1a21eae787244fe57c91727402a
 });
 
 // ===================================================
 // 4. EVENTOS (Conexões dos Botões)
 // ===================================================
 function handlePostClick(e) {
+<<<<<<< HEAD
   const userLink = e.target.closest('.post-username[data-username]');
   if (userLink) { viewedUsername = userLink.dataset.username; activateView("profile"); return; }
   const likeButton = e.target.closest('[data-like]');
@@ -487,12 +569,49 @@ function handlePostClick(e) {
     if (text && text.trim()) { apiCreateComment(postId, text.trim()); }
     return;
   }
+=======
+    // 1. O utilizador clicou no botão "Like"?
+    const likeBtn = e.target.closest('[data-like]');
+    if (likeBtn) {
+        const postId = likeBtn.dataset.like;
+        if (likeBtn.classList.contains('liked')) {
+            // Se já está 'liked', vamos descurtir
+            likeBtn.classList.remove('liked');
+            apiUnlikePost(postId);
+        } else {
+            // Se não está, vamos curtir
+            likeBtn.classList.add('liked');
+            apiLikePost(postId);
+        }
+        return; // Paramos aqui
+    }
+
+    // 2. O utilizador clicou no botão "Comentar"?
+    const commentBtn = e.target.closest('[data-comment]');
+    if (commentBtn) {
+        const postId = commentBtn.dataset.comment;
+        const text = prompt("Digite o seu comentário:");
+        if (text && text.trim()) {
+            apiCreateComment(postId, text.trim());
+        }
+        return; // Paramos aqui
+    }
+
+    // 3. O utilizador clicou no NOME de alguém?
+    const userLink = e.target.closest('.post-username[data-username]');
+    if (userLink) {
+        viewedUsername = userLink.dataset.username;
+        activateView("profile");
+        return; // Paramos aqui
+    }
+>>>>>>> 171fc9c0d186a1a21eae787244fe57c91727402a
 }
 
 // ===================================================
 // 5. LÓGICA DE TROCA DE VISÃO (Views)
 // ===================================================
 function activateView(name, options = {}) {
+<<<<<<< HEAD
   Object.values(DOM.views).forEach(view => view.hidden = true);
   DOM.appEl.classList.remove("view-home", "view-community");
   document.querySelectorAll(".servers .server, .servers .add-btn").forEach(b => b.classList.remove("active"));
@@ -550,6 +669,64 @@ function activateCommunityView(name, options = {}) {
         renderChannel("geral"); 
     } else if (name === "members") {
         DOM.communityMembersView.hidden = false; 
+=======
+    // 1. Desativa a "Visão de Comunidade"
+    DOM.appEl.classList.remove('view-community');
+    DOM.appEl.classList.add('view-home');
+    
+    // 2. Esconde todas as visões principais
+    Object.values(DOM.views).forEach(v => v.hidden = true);
+    
+    // 3. Mostra a visão correta
+    if (DOM.views[name]) {
+        DOM.views[name].hidden = false;
+    } else {
+        DOM.views.feed.hidden = false; // "Fallback"
+    }
+
+    // 4. Atualiza os botões "Pill"
+    DOM.viewTabs.forEach(b => b.classList.remove('active'));
+    const activeTab = document.querySelector(`.header .view-tabs .pill[data-view="${name}"]`);
+    if (activeTab) activeTab.classList.add('active');
+
+    // 5. Lógica de carregamento de dados
+    if (name === 'feed') apiGetPosts();
+    if (name === 'explore') apiGetExplorePosts();
+    if (name === 'profile') showDynamicProfile(viewedUsername);
+    if (name === 'explore-servers') apiGetExploreCommunities();
+}
+function activateCommunityView(name, options = {}) {
+    const { community } = options; 
+    
+    // 1. Ativa a "Visão de Comunidade"
+    DOM.appEl.classList.remove('view-home');
+    DOM.appEl.classList.add('view-community');
+
+    // 2. Esconde todas as visões (devemos também esconder as de "feed"?)
+    Object.values(DOM.views).forEach(v => v.hidden = true);
+
+    // 3. Mostra a visão correta (ex: 'community-topics')
+    if (DOM.views[name]) {
+        DOM.views[name].hidden = false;
+    } else {
+        DOM.views['community-topics'].hidden = false; // Fallback
+    }
+
+    // 4. Atualiza os botões "Pill" (da comunidade)
+    DOM.communityTabs.forEach(b => b.classList.remove('active'));
+    const activeTab = document.querySelector(`.channels .view-tabs .pill[data-community-view="${name}"]`);
+    if (activeTab) activeTab.classList.add('active');
+
+    // 5. Carrega os dados
+    if (name === 'community-topics') apiGetCommunityPosts(community); 
+    // if (name === 'community-members') apiGetCommunityMembers(community);
+    
+    // Se estamos a mudar para uma comunidade, atualiza o ID
+    if (community) {
+        currentCommunityId = community;
+        // ... (aqui deveríamos buscar o nome e emoji da comunidade)
+        // DOM.currentCommunityNameEl.textContent = "Nome da Comunidade";
+>>>>>>> 171fc9c0d186a1a21eae787244fe57c91727402a
     }
 }
 
@@ -558,12 +735,24 @@ function activateCommunityView(name, options = {}) {
 // ===================================================
 async function showDynamicProfile(username) {
   if (!username) return;
+<<<<<<< HEAD
   
   apiGetProfile(username);
   apiGetTestimonials(username);
   apiGetFollowing(username); 
   DOM.profileNameEl.textContent = username;
   
+=======
+
+  // Esta função agora carrega bio, mood e avatar
+  apiGetProfile(username);
+
+  apiGetTestimonials(username);
+  apiGetFollowing(username); 
+  DOM.profileNameEl.textContent = username;
+
+  // Limpa o estilo do avatar do perfil (para o caso de ser o dono)
+>>>>>>> 171fc9c0d186a1a21eae787244fe57c91727402a
   DOM.profileAvatarEl.classList.remove('is-owner');
   DOM.avatarUploadLabel.style.display = 'none';
 
@@ -572,6 +761,11 @@ async function showDynamicProfile(username) {
     DOM.editBioBtn.textContent = "Editar bio";
     DOM.editBioBtn.onclick = apiUpdateBio; 
     DOM.editBioBtn.disabled = false;
+<<<<<<< HEAD
+=======
+
+    // 👇 NOVO: Mostra o botão de upload e adiciona o 'hover'
+>>>>>>> 171fc9c0d186a1a21eae787244fe57c91727402a
     DOM.profileAvatarEl.classList.add('is-owner');
   } else {
     DOM.editBioBtn.disabled = false;
@@ -626,11 +820,9 @@ async function apiUnfollow(username) {
   }
 }
 
-
 // ===================================================
 // 7. INICIALIZAÇÃO
 // ===================================================
-
 function mapAppDOM() {
     DOM.chatView = document.getElementById("view-chat"); 
     DOM.chatMessagesEl = document.getElementById("messages");
@@ -652,8 +844,14 @@ function mapAppDOM() {
     DOM.profileBioEl = document.getElementById("profileBio");
     DOM.profileMoodEl = document.getElementById("profileMood");
     DOM.editBioBtn = document.getElementById("editBioBtn");
+<<<<<<< HEAD
     
     DOM.userAvatarEl = document.getElementById("userAvatar");
+=======
+
+    // 👇 NOVO: IDs do Avatar
+    DOM.userAvatarEl = document.getElementById("userAvatar"); // Na userbar
+>>>>>>> 171fc9c0d186a1a21eae787244fe57c91727402a
     DOM.avatarUploadInput = document.getElementById("avatar-upload-input");
     DOM.avatarUploadLabel = document.getElementById("avatar-upload-label");
 
@@ -700,52 +898,74 @@ function mapAppDOM() {
     };
 }
 
+// ===================================================
+// INÍCIO DA CORREÇÃO
+// ===================================================
+
 function bindAppEvents() {
-    DOM.chatSendBtn.addEventListener("click", sendChatMessage);
-    DOM.chatInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") sendChatMessage(); });
-    document.querySelectorAll(".channel[data-channel]").forEach(c => c.addEventListener("click", () => renderChannel(c.getAttribute("data-channel"))));
-    DOM.postsEl.addEventListener("click", handlePostClick);
-    DOM.explorePostsEl.addEventListener("click", handlePostClick); 
-    DOM.feedSend.addEventListener("click", apiCreatePost);
-    DOM.feedRefreshBtn.addEventListener("click", apiGetPosts);
-    DOM.btnExploreRefresh.addEventListener("click", apiGetExplorePosts); 
-    DOM.testimonialSend.addEventListener("click", apiCreateTestimonial);
-    DOM.viewTabs.forEach(b => b.addEventListener("click", () => { const viewName = b.dataset.view; activateView(viewName); }));
-    DOM.btnExplore.addEventListener("click", () => activateView("explore"));
-    DOM.userbarMeBtn.addEventListener("click", () => { viewedUsername = currentUser; activateView("profile"); });
-    DOM.userbarMoodContainer.addEventListener("click", apiUpdateMood);
-    DOM.headerHomeBtn.addEventListener("click", () => { activateView("feed"); });
-    DOM.homeBtn.addEventListener("click", () => { activateView("feed"); });
-    DOM.exploreServersBtn.addEventListener("click", () => { activateView("explore-servers"); });
+    // Adicionamos verificações "if (DOM.elemento)" para evitar o crash
+    // caso o elemento não exista no HTML.
+
+    if (DOM.chatSendBtn) DOM.chatSendBtn.addEventListener("click", sendChatMessage);
+    if (DOM.chatInputEl) DOM.chatInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") sendChatMessage(); });
     
+<<<<<<< HEAD
     DOM.avatarUploadInput.addEventListener("change", apiUploadAvatar);
     DOM.profileAvatarEl.addEventListener("click", () => {
+=======
+    document.querySelectorAll(".channel[data-channel]").forEach(c => c.addEventListener("click", () => renderChannel(c.getAttribute("data-channel"))));
+    
+    if (DOM.postsEl) DOM.postsEl.addEventListener("click", handlePostClick);
+    if (DOM.explorePostsEl) DOM.explorePostsEl.addEventListener("click", handlePostClick); // <-- Verificação adicionada
+    if (DOM.feedSend) DOM.feedSend.addEventListener("click", apiCreatePost);
+    if (DOM.feedRefreshBtn) DOM.feedRefreshBtn.addEventListener("click", apiGetPosts);
+    if (DOM.btnExploreRefresh) DOM.btnExploreRefresh.addEventListener("click", apiGetExplorePosts); // <-- Verificação adicionada
+    if (DOM.testimonialSend) DOM.testimonialSend.addEventListener("click", apiCreateTestimonial);
+    
+    DOM.viewTabs.forEach(b => b.addEventListener("click", () => { const viewName = b.dataset.view; activateView(viewName); }));
+    
+    if (DOM.btnExplore) DOM.btnExplore.addEventListener("click", () => activateView("explore"));
+    if (DOM.userbarMeBtn) DOM.userbarMeBtn.addEventListener("click", () => { viewedUsername = currentUser; activateView("profile"); });
+    if (DOM.userbarMoodContainer) DOM.userbarMoodContainer.addEventListener("click", apiUpdateMood);
+    if (DOM.headerHomeBtn) DOM.headerHomeBtn.addEventListener("click", () => { activateView("feed"); });
+    if (DOM.homeBtn) DOM.homeBtn.addEventListener("click", () => { activateView("feed"); });
+    if (DOM.exploreServersBtn) DOM.exploreServersBtn.addEventListener("click", () => { activateView("explore-servers"); });
+
+    // Eventos de Upload de Avatar
+    if (DOM.avatarUploadInput) DOM.avatarUploadInput.addEventListener("change", apiUploadAvatar);
+    if (DOM.profileAvatarEl) DOM.profileAvatarEl.addEventListener("click", () => {
+>>>>>>> 171fc9c0d186a1a21eae787244fe57c91727402a
       if (DOM.profileAvatarEl.classList.contains('is-owner')) {
-        DOM.avatarUploadInput.click();
+        if (DOM.avatarUploadInput) DOM.avatarUploadInput.click();
       }
     });
 
-    DOM.friendsContainer.addEventListener("click", (e) => {
+    if (DOM.friendsContainer) DOM.friendsContainer.addEventListener("click", (e) => {
       const friendLink = e.target.closest('.friend-card-name[data-username]');
       if (friendLink) { viewedUsername = friendLink.dataset.username; activateView("profile"); }
     });
-    DOM.communityListContainer.addEventListener("click", (e) => {
+    
+    if (DOM.communityListContainer) DOM.communityListContainer.addEventListener("click", (e) => { // <-- Verificação adicionada
       const joinButton = e.target.closest('.join-btn[data-community-id]');
       if (joinButton) { const communityId = joinButton.dataset.communityId; apiJoinCommunity(communityId, joinButton); }
     });
-    DOM.joinedServersList.addEventListener("click", (e) => {
+    
+    if (DOM.joinedServersList) DOM.joinedServersList.addEventListener("click", (e) => {
       const communityBtn = e.target.closest('.community-btn[data-community-id]');
       if (communityBtn) { const communityId = communityBtn.dataset.communityId; activateCommunityView("topics", { community: communityId }); }
     });
-    DOM.btnShowCreateCommunity.addEventListener("click", () => { activateView("create-community"); });
-    DOM.btnCancelCreate.addEventListener("click", () => { activateView("explore-servers"); });
-    DOM.createCommunityForm.addEventListener("submit", (e) => {
+    
+    if (DOM.btnShowCreateCommunity) DOM.btnShowCreateCommunity.addEventListener("click", () => { activateView("create-community"); }); // <-- Verificação adicionada
+    if (DOM.btnCancelCreate) DOM.btnCancelCreate.addEventListener("click", () => { activateView("explore-servers"); }); // <-- Verificação adicionada
+    
+    if (DOM.createCommunityForm) DOM.createCommunityForm.addEventListener("submit", (e) => { // <-- Verificação adicionada
         e.preventDefault();
         const name = document.getElementById("community-name").value.trim();
         const emoji = document.getElementById("community-emoji").value.trim();
         if (!name) return;
         apiCreateCommunity(name, emoji, DOM.createCommunityForm.querySelector('button[type="submit"]'));
     });
+    
     DOM.communityTabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const view = tab.dataset.communityView;
@@ -754,16 +974,31 @@ function bindAppEvents() {
     });
 }
 
+// ===================================================
+// FIM DA CORREÇÃO
+// ===================================================
+
 function startApp() {
   console.log('Socket conectado:', socket.id);
   mapAppDOM();
+<<<<<<< HEAD
   bindAppEvents();
   
+=======
+  bindAppEvents(); // Agora esta função é segura
+
+  // Define o nome de utilizador (avatar e mood são carregados pela apiGetProfile)
+>>>>>>> 171fc9c0d186a1a21eae787244fe57c91727402a
   document.getElementById("userName").textContent = currentUser;
-  
+
   apiGetJoinedCommunities(); 
+<<<<<<< HEAD
   apiGetProfile(currentUser);
   
+=======
+  apiGetProfile(currentUser); // Carrega bio, mood e avatar
+
+>>>>>>> 171fc9c0d186a1a21eae787244fe57c91727402a
   activateView("feed"); 
   DOM.appEl.hidden = false;
   LoginDOM.view.hidden = true;
@@ -773,11 +1008,11 @@ function handleLoginSubmit(e) {
     e.preventDefault();
     const username = LoginDOM.input.value.trim();
     if (!username) return;
-    
+
     currentUser = username;
     viewedUsername = currentUser;
     localStorage.setItem("agora:user", currentUser);
-    
+
     socket.connect();
 }
 
@@ -788,7 +1023,7 @@ function checkLogin() {
     DOM.appEl = document.querySelector(".app"); 
 
     const storedUser = localStorage.getItem("agora:user");
-    
+
     socket.on('connect', startApp);
 
     if (storedUser && storedUser.trim()) {
@@ -802,4 +1037,9 @@ function checkLogin() {
     }
 }
 
+<<<<<<< HEAD
 checkLogin();
+=======
+// Inicia todo o processo
+checkLogin();
+>>>>>>> 171fc9c0d186a1a21eae787244fe57c91727402a
