@@ -18,22 +18,21 @@ async function setupDatabase() {
     await client.query(`CREATE TABLE IF NOT EXISTS testimonials (id SERIAL PRIMARY KEY, "from_user" TEXT NOT NULL, "to_user" TEXT NOT NULL, text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS comments (id SERIAL PRIMARY KEY, post_id INT NOT NULL REFERENCES posts(id) ON DELETE CASCADE, "user" TEXT NOT NULL, text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS follows (id SERIAL PRIMARY KEY, follower_user TEXT NOT NULL, following_user TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW(), UNIQUE(follower_user, following_user))`);
-    
-    // 👇 MUDANÇA AQUI 👇
-    await client.query(`CREATE TABLE IF NOT EXISTS communities (
-        id SERIAL PRIMARY KEY, 
-        name TEXT NOT NULL, 
-        description TEXT, 
-        emoji TEXT, 
-        members INT DEFAULT 0, 
-        timestamp TIMESTAMPTZ DEFAULT NOW(),
-        owner_user TEXT 
-    )`);
-    // 👆 FIM DA MUDANÇA 👆
-    
+    await client.query(`CREATE TABLE IF NOT EXISTS communities (id SERIAL PRIMARY KEY, name TEXT NOT NULL, description TEXT, emoji TEXT, members INT DEFAULT 0, timestamp TIMESTAMPTZ DEFAULT NOW(), owner_user TEXT)`);
     await client.query(`CREATE TABLE IF NOT EXISTS community_members (id SERIAL PRIMARY KEY, user_name TEXT NOT NULL, community_id INT NOT NULL REFERENCES communities(id) ON DELETE CASCADE, timestamp TIMESTAMPTZ DEFAULT NOW(), UNIQUE(user_name, community_id))`);
     await client.query(`CREATE TABLE IF NOT EXISTS community_posts (id SERIAL PRIMARY KEY, community_id INT NOT NULL REFERENCES communities(id) ON DELETE CASCADE, "user" TEXT NOT NULL, title TEXT NOT NULL, content TEXT, likes INT DEFAULT 0, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS channels (id SERIAL PRIMARY KEY, community_id INT NOT NULL REFERENCES communities(id) ON DELETE CASCADE, name TEXT NOT NULL, is_voice BOOLEAN DEFAULT FALSE, timestamp TIMESTAMPTZ DEFAULT NOW())`);
+
+    // 👇 NOVA TABELA 👇
+    await client.query(`CREATE TABLE IF NOT EXISTS profile_ratings (
+        id SERIAL PRIMARY KEY,
+        from_user TEXT NOT NULL,
+        to_user TEXT NOT NULL,
+        rating_type TEXT NOT NULL,
+        timestamp TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(from_user, to_user, rating_type)
+    )`);
+    // 👆 FIM DA NOVA TABELA 👆
     
     console.log('Tabelas verificadas/criadas.');
 
@@ -50,15 +49,13 @@ async function setupDatabase() {
     } catch (e) {
         if (e.code !== '42701') console.error('Erro migração "avatar_url":', e.message);
     }
-    
-    // 👇 NOVA MIGRAÇÃO 👇
     try {
         await client.query('ALTER TABLE communities ADD COLUMN IF NOT EXISTS owner_user TEXT');
         console.log('MIGRAÇÃO OK: Coluna "owner_user" (Dono) verificada/adicionada.');
     } catch (e) {
         if (e.code !== '42701') console.error('Erro migração "owner_user":', e.message);
     }
-    // 👆 FIM DA MIGRAÇÃO 👆
+    // A tabela 'profile_ratings' é nova, não precisa de 'ALTER'.
 
     await seedDatabase(client);
     

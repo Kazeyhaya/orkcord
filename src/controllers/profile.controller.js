@@ -6,7 +6,13 @@ const getProfileBio = async (req, res) => {
     try {
         const { username } = req.params;
         const profile = await Profile.findByUser(username);
-        res.json(profile); 
+        
+        // 👇 MUDANÇA: Busca também as avaliações 👇
+        const ratings = await profile.getRatings();
+        
+        // Envia ambos os objetos
+        res.json({ profile, ratings }); 
+        
     } catch (err) {
         console.error("Erro no controlador getProfileBio:", err);
         res.status(500).json({ error: 'Erro ao buscar perfil' });
@@ -18,14 +24,12 @@ const updateProfileBio = async (req, res) => {
     try {
         const { user, bio } = req.body;
         
-        // --- VALIDAÇÃO ---
         if (!user || bio === undefined) {
             return res.status(400).json({ error: 'Utilizador e bio são obrigatórios' });
         }
         if (bio.length > 150) {
             return res.status(400).json({ error: 'A bio não pode exceder 150 caracteres.' });
         }
-        // --- FIM DA VALIDAÇÃO ---
 
         const profile = await Profile.findByUser(user);
         profile.bio = bio;
@@ -43,14 +47,12 @@ const updateUserMood = async (req, res) => {
     try {
         const { user, mood } = req.body;
         
-        // --- VALIDAÇÃO ---
         if (!user || mood === undefined) {
             return res.status(400).json({ error: 'Utilizador e mood são obrigatórios' });
         }
         if (mood.length > 30) {
              return res.status(400).json({ error: 'O mood não pode exceder 30 caracteres.' });
         }
-        // --- FIM DA VALIDAÇÃO ---
 
         const newMood = await Profile.updateMood(user, mood);
         res.status(200).json({ mood: newMood });
@@ -82,7 +84,31 @@ const updateUserAvatar = async (req, res) => {
     }
 };
 
-// [GET] /api/following/:username
+// 👇 NOVO CONTROLADOR (para adicionar um voto) 👇
+// [POST] /api/profile/rate
+const addProfileRating = async (req, res) => {
+    try {
+        const { from_user, to_user, rating_type } = req.body;
+        
+        if (!from_user || !to_user || !rating_type) {
+             return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
+        }
+        if (from_user === to_user) {
+            return res.status(400).json({ error: 'Não pode avaliar a si mesmo.' });
+        }
+        
+        await Profile.addRating(from_user, to_user, rating_type);
+        res.status(201).json({ success: true });
+
+    } catch (err) {
+        console.error("Erro no controlador addProfileRating:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+// 👆 FIM DO NOVO CONTROLADOR 👆
+
+
+// (O resto dos controladores: getFollowingList, getIsFollowing, addFollow, removeFollow)
 const getFollowingList = async (req, res) => {
     try {
         const { username } = req.params;
@@ -94,8 +120,6 @@ const getFollowingList = async (req, res) => {
         res.status(500).json({ error: 'Erro ao buscar amigos' });
     }
 };
-
-// [GET] /api/isfollowing/:username
 const getIsFollowing = async (req, res) => {
     try {
         const { username: userToCheck } = req.params;
@@ -111,8 +135,6 @@ const getIsFollowing = async (req, res) => {
         res.status(500).json({ error: 'Erro ao verificar' });
     }
 };
-
-// [POST] /api/follow
 const addFollow = async (req, res) => {
     try {
         const { follower, following } = req.body;
@@ -127,8 +149,6 @@ const addFollow = async (req, res) => {
         res.status(500).json({ error: 'Erro ao seguir' });
     }
 };
-
-// [POST] /api/unfollow
 const removeFollow = async (req, res) => {
     try {
         const { follower, following } = req.body;
@@ -149,6 +169,7 @@ module.exports = {
   updateProfileBio,
   updateUserMood,
   updateUserAvatar,
+  addProfileRating, // Exporta o novo controlador
   getFollowingList,
   getIsFollowing,
   addFollow,

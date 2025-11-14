@@ -122,6 +122,7 @@ a{color:inherit;text-decoration:none}
 .app.view-home .explore,
 .app.view-home .explore-servers,
 .app.view-home .create-community,
+.app.view-home .create-topic,
 .app.view-home .community-content {
   grid-area: content;
 }
@@ -147,7 +148,8 @@ a{color:inherit;text-decoration:none}
 .app.view-community .profile,
 .app.view-community .explore,
 .app.view-community .explore-servers,
-.app.view-community .create-community { 
+.app.view-community .create-community,
+.app.view-community .create-topic {
   display: none;
 }
 
@@ -401,11 +403,21 @@ a{color:inherit;text-decoration:none}
   display: grid;
   grid-template-rows: auto 1fr;
 }
-#create-community-form label {
+#create-community-form label, #create-topic-form label {
   display: block;
   font-weight: 600;
   margin-bottom: 5px;
 }
+
+.create-topic {
+  background: var(--discord-dark);
+  border: 1px solid rgba(255, 255, 255, .06);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
 
 /* --- Logo de Cabeçalho Clicável --- */
 #header-home-btn {
@@ -530,7 +542,7 @@ a{color:inherit;text-decoration:none}
   box-shadow: var(--shadow);
 }
 
-/* 👇 NOVO: Estilos do Modal de Input Genérico 👇 */
+/* --- Estilos do Modal de Input Genérico --- */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -541,7 +553,7 @@ a{color:inherit;text-decoration:none}
   place-items: center;
   background: rgba(10, 10, 10, 0.5);
   backdrop-filter: blur(10px);
-  z-index: 101; /* Mais alto que o login */
+  z-index: 101;
   display: none;
 }
 .modal-overlay[hidden] {
@@ -562,5 +574,37 @@ a{color:inherit;text-decoration:none}
   flex-direction: column;
   align-items: center;
   box-shadow: var(--shadow);
+}
+
+/* 👇 NOVO: Estilos para Avaliações (Ratings) 👇 */
+.ratings-display {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rating-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+.rating-icon {
+  font-size: 1rem;
+  opacity: 0.8;
+}
+.rating-label {
+  color: var(--text-secondary);
+}
+.rating-count {
+  font-weight: 600;
+  color: #fff;
+}
+#ratings-vote-container .mini-btn {
+  background: var(--discord-dark);
+}
+#ratings-vote-container .mini-btn:hover {
+  background: var(--discord-darker);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 /* 👆 FIM DOS NOVOS ESTILOS 👆 */

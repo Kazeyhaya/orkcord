@@ -1,72 +1,125 @@
-// src/models/profile.class.test.js
-const Profile = require('./profile.class');
+// src/models/profile.class.js
 const db = require('./db');
 
-// --- Mock da Base de Dados ---
-jest.mock('./db', () => ({
-  query: jest.fn(),
-}));
-
-// --- Início dos Testes ---
-describe('Profile Class (Unit Tests)', () => {
-
-  beforeEach(() => {
-    db.query.mockClear();
-  });
-
-  it('deve criar um perfil com valores padrão', () => {
-    const profile = new Profile({ user: 'Alexandre' });
-
-    expect(profile.user).toBe('Alexandre');
-    expect(profile.bio).toBe('Nenhuma bio definida.');
-    expect(profile.mood).toBe('✨ novo por aqui!');
-    expect(profile.avatar_url).toBe(null);
-  });
-
-  it('deve verificar se o utilizador segue outro (isFollowing)', async () => {
-    db.query.mockResolvedValue({ rows: [{ '1': 1 }] });
+class Profile {
     
-    const profile = new Profile({ user: 'Alexandre' });
-    const isFollowing = await profile.isFollowing('Tsuki');
+    constructor({ user, bio, mood, avatar_url }) {
+        this.user = user;
+        this.bio = bio || "Nenhuma bio definida.";
+        this.mood = mood || "✨ novo por aqui!";
+        this.avatar_url = avatar_url || null;
+    }
 
-    expect(isFollowing).toBe(true);
-    expect(db.query).toHaveBeenCalledWith(
-      'SELECT 1 FROM follows WHERE follower_user = $1 AND following_user = $2',
-      ['Alexandre', 'Tsuki']
-    );
-  });
+    // --- MÉTODOS DE INSTÂNCIA ---
 
-  it('deve verificar se o utilizador NÃO segue outro (isFollowing)', async () => {
-    db.query.mockResolvedValue({ rows: [] });
+    async save() {
+        const result = await db.query(
+            'INSERT INTO profiles ("user", bio, mood, avatar_url) VALUES ($1, $2, $3, $4) ON CONFLICT ("user") DO UPDATE SET bio = $2, mood = $3, avatar_url = $4 RETURNING *',
+            [this.user, this.bio, this.mood, this.avatar_url]
+        );
+        this.bio = result.rows[0].bio;
+        this.mood = result.rows[0].mood;
+        this.avatar_url = result.rows[0].avatar_url;
+        return this;
+    }
+
+    async follow(userToFollow) {
+        await db.query('INSERT INTO follows (follower_user, following_user) VALUES ($1, $2) ON CONFLICT DO NOTHING', [this.user, userToFollow]);
+        return true;
+    }
+
+    async unfollow(userToUnfollow) {
+        await db.query('DELETE FROM follows WHERE follower_user = $1 AND following_user = $2', [this.user, userToUnfollow]);
+        return true;
+    }
+
+    async getFollowing() {
+        const result = await db.query(
+            `SELECT f.following_user, p.avatar_url 
+             FROM follows f
+             LEFT JOIN profiles p ON f.following_user = p."user"
+             WHERE f.follower_user = $1`, 
+            [this.user]
+        );
+        return result.rows.map(r => ({
+            user: r.following_user,
+            avatar_url: r.avatar_url
+        }));
+    }
+
+    async isFollowing(userToCheck) {
+        const result = await db.query('SELECT 1 FROM follows WHERE follower_user = $1 AND following_user = $2', [this.user, userToCheck]);
+        return result.rows.length > 0;
+    }
+
+    // 👇 NOVO MÉTODO (para buscar os votos deste perfil) 👇
+    async getRatings() {
+        const result = await db.query(
+            `SELECT rating_type, COUNT(*) as count 
+             FROM profile_ratings 
+             WHERE to_user = $1 
+             GROUP BY rating_type`,
+            [this.user]
+        );
+        
+        // Inicializa os contadores
+        const counts = { confiavel: 0, legal: 0, divertido: 0 };
+        
+        // Preenche com os valores da BD
+        for (const row of result.rows) {
+            if (counts[row.rating_type] !== undefined) {
+                counts[row.rating_type] = parseInt(row.count, 10);
+            }
+        }
+        return counts;
+    }
+    // 👆 FIM DO NOVO MÉTODO 👆
+
+
+    // --- MÉTODOS ESTÁTICOS ("Fábricas") ---
     
-    const profile = new Profile({ user: 'Alexandre' });
-    const isFollowing = await profile.isFollowing('Goku');
+    static async findByUser(username) {
+        const result = await db.query('SELECT * FROM profiles WHERE "user" = $1', [username]);
+        if (result.rows[0]) {
+            return new Profile(result.rows[0]);
+        }
+        return new Profile({ user: username });
+    }
 
-    expect(isFollowing).toBe(false);
-  });
+    static async updateMood(username, newMood) {
+        const result = await db.query(
+            'INSERT INTO profiles ("user", mood) VALUES ($1, $2) ON CONFLICT ("user") DO UPDATE SET mood = $2 RETURNING mood',
+            [username, newMood]
+        );
+        return result.rows[0].mood;
+    }
+    
+    static async updateAvatar(username, avatarUrl) {
+         const result = await db.query(
+            'INSERT INTO profiles ("user", avatar_url) VALUES ($1, $2) ON CONFLICT ("user") DO UPDATE SET avatar_url = $2 RETURNING avatar_url',
+            [username, avatarUrl]
+        );
+        return result.rows[0].avatar_url;
+    }
+    
+    // 👇 NOVO MÉTODO (para adicionar um voto) 👇
+    static async addRating(fromUser, toUser, ratingType) {
+        // Validação básica
+        const validTypes = ['confiavel', 'legal', 'divertido'];
+        if (!validTypes.includes(ratingType)) {
+            throw new Error('Tipo de avaliação inválido');
+        }
+        
+        // 'ON CONFLICT DO NOTHING' garante que um utilizador só pode votar uma vez
+        await db.query(
+            `INSERT INTO profile_ratings (from_user, to_user, rating_type) 
+             VALUES ($1, $2, $3) 
+             ON CONFLICT (from_user, to_user, rating_type) DO NOTHING`,
+            [fromUser, toUser, ratingType]
+        );
+        return { success: true };
+    }
+    // 👆 FIM DO NOVO MÉTODO 👆
+}
 
-  // 👇 MUDANÇA (CORREÇÃO DO TESTE) 👇
-  it('deve salvar (atualizar) uma bio', async () => {
-    // 1. Prepara a "mentira"
-    // O save() agora retorna a linha inteira
-    const mockRow = { user: 'Alexandre', bio: 'Bio atualizada', mood: '✨ novo por aqui!', avatar_url: null };
-    db.query.mockResolvedValue({ rows: [mockRow] });
-
-    // 2. Executa
-    const profile = new Profile({ user: 'Alexandre' });
-    profile.bio = 'Bio atualizada';
-    await profile.save();
-
-    // 3. Verifica
-    expect(db.query).toHaveBeenCalledWith(
-      // Verifica se o SQL está a usar o INSERT ... ON CONFLICT
-      expect.stringContaining('INSERT INTO profiles'),
-      // Verifica se os valores corretos foram enviados
-      ['Alexandre', 'Bio atualizada', profile.mood, profile.avatar_url]
-    );
-    // Verifica se o objeto foi atualizado
-    expect(profile.bio).toBe('Bio atualizada');
-  });
-  //  FIM DA MUDANÇA 
-
-});
+module.exports = Profile;

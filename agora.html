@@ -79,6 +79,7 @@
       </div>
       
     </aside>
+
     <section class="feed" id="view-feed">
       <div class="feed-top">
         <div class="chat-topic"><div class="topic-badge">Agora Feed</div><span class="meta">— Posts de quem você segue</span></div>
@@ -106,9 +107,11 @@
         <button class="send" id="sendBtn">Enviar</button>
       </div>
     </main>
+    
     <section class="profile" id="view-profile" hidden>
       <div class="profile-top"><div class="chat-topic"><div class="topic-badge">Perfil</div><span class="meta">— Seu perfil social</span></div></div>
       <div class="profile-body">
+        
         <div class="card">
           <div class="avatar-display profile-avatar" id="profileAvatar" style="width:64px;height:64px;border-radius:16px;margin-bottom:8px">VC</div>
           <label class="mini-btn" for="avatar-upload-input" id="avatar-upload-label" style="display: none; margin-bottom: 8px; justify-content: center;">
@@ -124,9 +127,23 @@
             <button class="mini-btn" id="editBioBtn">Editar bio</button>
             <button class="mini-btn" id="dmBtn" style="display: none;">Mensagem</button>
           </div>
-        </div>
+          
+          <div id="ratings-vote-container" style="display: none; margin-top: 10px;">
+            <div class="meta" style="margin-bottom: 5px;">Avalie este usuário:</div>
+            <div style="display: flex; gap: 8px;">
+                <button class="mini-btn" data-rating="confiavel">😊 Confiável</button>
+                <button class="mini-btn" data-rating="legal">🧊 Legal</button>
+                <button class="mini-btn" data-rating="divertido">🥳 Divertido</button>
+            </div>
+          </div>
+          </div>
+        
         <div class="card">
-          <h3 style="margin-bottom:8px">Depoimentos</h3>
+          <h3 style="margin-bottom:8px">Avaliações</h3>
+          <div class="ratings-display" id="ratings-display-container">
+            <div class="meta">Ainda não há avaliações.</div>
+          </div>
+          <h3 style="margin:12px 0 8px">Depoimentos</h3>
           <div id="testimonials" class="comments"></div>
           
           <div style="display:flex;gap:8px;margin-top:10px" id="testimonial-form-container">

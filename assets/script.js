@@ -2,7 +2,7 @@
 // 1. ESTADO GLOBAL E OBJETOS DOM
 // ===================================================
 let currentUser = null;
-let activeChannel = null; // Começa nulo
+let activeChannel = null;
 let viewedUsername = null;
 let currentCommunityId = null; 
 let currentCommunityName = null; 
@@ -165,12 +165,15 @@ function renderComments(postId, comments) {
 
 // --- Funções de Perfil, Mood, Avatar ---
 
+// 👇 MUDANÇA: 'apiGetProfile' agora recebe 'profile' e 'ratings' 👇
 async function apiGetProfile(username) { 
   try {
     const res = await fetch(`/api/profile/${encodeURIComponent(username)}`);
     if (!res.ok) return;
     
-    const profileData = await res.json(); 
+    const data = await res.json(); 
+    const profileData = data.profile;
+    const ratingsData = data.ratings;
     
     if (DOM.profileBioEl) {
       DOM.profileBioEl.textContent = profileData.bio;
@@ -179,6 +182,9 @@ async function apiGetProfile(username) {
       DOM.profileMoodEl.textContent = `Mood: ${profileData.mood || "✨"}`;
     }
     renderAvatar(DOM.profileAvatarEl, profileData);
+    
+    // Renderiza as avaliações recebidas
+    renderRatings(ratingsData); 
 
     if (username === currentUser) {
       if (DOM.userbarMood) {
@@ -193,6 +199,68 @@ async function apiGetProfile(username) {
     if (DOM.profileMoodEl) DOM.profileMoodEl.textContent = "Mood: (erro)";
   }
 } 
+// 👆 FIM DA MUDANÇA 👆
+
+// 👇 NOVO: Função para renderizar as avaliações na tela 👇
+function renderRatings(ratings) {
+    if (!DOM.ratingsDisplayContainer) return;
+    
+    DOM.ratingsDisplayContainer.innerHTML = ""; // Limpa o container
+    
+    const items = [
+        { icon: '😊', label: 'Confiável', count: ratings.confiavel },
+        { icon: '🧊', label: 'Legal', count: ratings.legal },
+        { icon: '🥳', label: 'Divertido', count: ratings.divertido }
+    ];
+    
+    if (items.every(item => item.count === 0)) {
+        DOM.ratingsDisplayContainer.innerHTML = "<div class='meta'>Ainda não há avaliações.</div>";
+        return;
+    }
+    
+    items.forEach(item => {
+        if (item.count > 0) {
+            const node = document.createElement('div');
+            node.className = 'rating-item';
+            node.innerHTML = `
+                <span class="rating-icon">${item.icon}</span>
+                <span class="rating-label">${item.label}</span>
+                <span class="rating-count">${item.count}</span>
+            `;
+            DOM.ratingsDisplayContainer.appendChild(node);
+        }
+    });
+}
+// 👆 FIM DA NOVA FUNÇÃO 👆
+
+// 👇 NOVO: Função para enviar um voto de avaliação 👇
+async function apiAddRating(ratingType) {
+    try {
+        const res = await fetch('/api/profile/rate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from_user: currentUser,
+                to_user: viewedUsername,
+                rating_type: ratingType
+            })
+        });
+        
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error);
+        }
+        
+        // Esconde os botões e recarrega o perfil para mostrar o novo voto
+        DOM.ratingsVoteContainer.hidden = true;
+        apiGetProfile(viewedUsername); 
+        
+    } catch (err) {
+        console.error("Falha ao enviar avaliação:", err);
+        alert(`Erro ao avaliar: ${err.message}`);
+    }
+}
+// 👆 FIM DA NOVA FUNÇÃO 👆
 
 async function apiUpdateMood() {
   const currentMood = DOM.userbarMood.textContent;
@@ -535,25 +603,21 @@ function renderExploreCommunities(communities) {
 function renderDirectMessage(roomName, targetUser) {
     activeChannel = roomName;
     
-    // Mostra o layout de "comunidade" (que vamos usar para o chat)
     Object.values(DOM.views).forEach(view => view.hidden = true);
     DOM.appEl.classList.remove("view-home");
     DOM.appEl.classList.add("view-community");
     
     DOM.mainHeader.hidden = true; 
     DOM.channelsEl.hidden = false;
-    DOM.chatView.hidden = false; // Mostra a view de chat
+    DOM.chatView.hidden = false;
     
-    // Ativa o botão "Home" (A) em vez de um botão de comunidade
     document.querySelectorAll(".servers .server, .servers .add-btn").forEach(b => b.classList.remove("active"));
     DOM.homeBtn.classList.add("active");
 
-    // Limpa o chat e define a UI para DM
     DOM.chatMessagesEl.innerHTML = "";
     DOM.chatTopicBadge.textContent = `@ ${targetUser}`;
     DOM.chatInputEl.placeholder = `Envie uma mensagem para @${targetUser}`;
     
-    // Esconde a UI de Comunidade (lista de canais, etc)
     if (DOM.communityChatChannelsList) DOM.communityChatChannelsList.hidden = true;
     DOM.communityTabs.forEach(b => b.style.display = 'none');
     if (DOM.communityCard) DOM.communityCard.hidden = true;
@@ -677,10 +741,9 @@ function activateCommunityView(name, options = {}) {
     DOM.mainHeader.hidden = true; 
     DOM.channelsEl.hidden = false; 
 
-    // Restaura a UI da comunidade
     DOM.communityTabs.forEach(b => b.style.display = 'flex');
     if (DOM.communityCard) DOM.communityCard.hidden = false;
-    if (DOM.communityChatChannelsList) DOM.communityChatChannelsList.hidden = true; // Garante que o chat está escondido
+    if (DOM.communityChatChannelsList) DOM.communityChatChannelsList.hidden = true;
 
     currentCommunityId = options.community;
     
@@ -692,7 +755,7 @@ function activateCommunityView(name, options = {}) {
 
     DOM.communityTopicView.hidden = true;
     DOM.communityMembersView.hidden = true;
-    DOM.chatView.hidden = true; // Esconde o chat por defeito
+    DOM.chatView.hidden = true;
     
     if (name === "topics") {
         DOM.communityTopicView.hidden = false; 
@@ -718,12 +781,18 @@ async function showDynamicProfile(username) {
 
   DOM.editBioBtn.disabled = true; 
   
+  // Esconde/Mostra os botões de avaliação
+  if (username === currentUser) {
+    DOM.ratingsVoteContainer.hidden = true;
+  } else {
+    DOM.ratingsVoteContainer.hidden = false;
+  }
+  
   if (username === currentUser) {
     DOM.editBioBtn.textContent = "Editar bio";
     DOM.editBioBtn.onclick = apiUpdateBio;
     DOM.editBioBtn.disabled = false;
     DOM.profileAvatarEl.classList.add('is-owner');
-    
     DOM.testimonialFormContainer.hidden = true;
     DOM.dmBtn.style.display = 'none';
     
@@ -860,6 +929,11 @@ function mapAppDOM() {
     DOM.topicContentInput = document.getElementById("topic-content");
     DOM.btnCancelTopic = document.getElementById("btn-cancel-topic");
 
+    // 👇 NOVO: IDs das Avaliações 👇
+    DOM.ratingsDisplayContainer = document.getElementById("ratings-display-container");
+    DOM.ratingsVoteContainer = document.getElementById("ratings-vote-container");
+    DOM.ratingVoteButtons = document.querySelectorAll("#ratings-vote-container .mini-btn");
+    
     DOM.appEl = document.querySelector(".app");
     DOM.mainHeader = document.querySelector(".header"); 
     DOM.channelsEl = document.querySelector(".channels");
@@ -870,7 +944,7 @@ function mapAppDOM() {
     
     DOM.views = {
         feed: DOM.feedView,
-        chat: DOM.chatView, // Re-adicionado
+        chat: DOM.chatView,
         profile: DOM.profileView,
         explore: DOM.exploreView,
         "explore-servers": DOM.exploreServersView,
@@ -884,7 +958,6 @@ function mapAppDOM() {
 function bindAppEvents() {
     DOM.chatSendBtn.addEventListener("click", sendChatMessage);
     DOM.chatInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") sendChatMessage(); });
-    // Evento de 'renderChannel' removido
     DOM.postsEl.addEventListener("click", handlePostClick);
     DOM.explorePostsEl.addEventListener("click", handlePostClick); 
     DOM.feedSend.addEventListener("click", apiCreatePost);
@@ -943,19 +1016,26 @@ function bindAppEvents() {
         apiCreateCommunityPost(DOM.createTopicForm);
     });
     
-    // Evento de clique nas abas da comunidade (simplificado)
     DOM.communityTabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const view = tab.dataset.communityView;
-            if (view) { // Só ativa se for 'topics' ou 'members'
+            if (view) {
                 activateCommunityView(view, { community: currentCommunityId });
             }
+        });
+    });
+    
+    // 👇 NOVO: Evento de clique para os botões de avaliação
+    DOM.ratingVoteButtons.forEach(button => {
+        button.addEventListener("click", () => {
+            const ratingType = button.dataset.rating;
+            apiAddRating(ratingType);
         });
     });
 }
 
 function startApp() {
-  console.log('Socket conectado:', socket.id); // Re-adicionado
+  console.log('Socket conectado:', socket.id);
   mapAppDOM();
   bindAppEvents();
   
@@ -978,7 +1058,7 @@ function handleLoginSubmit(e) {
     viewedUsername = currentUser;
     localStorage.setItem("agora:user", currentUser);
     
-    socket.connect(); // Re-adicionado
+    socket.connect();
 }
 
 function checkLogin() {
@@ -989,12 +1069,12 @@ function checkLogin() {
 
     const storedUser = localStorage.getItem("agora:user");
     
-    socket.on('connect', startApp); // Re-adicionado
+    socket.on('connect', startApp);
 
     if (storedUser && storedUser.trim()) {
         currentUser = storedUser.trim();
         viewedUsername = currentUser;
-        socket.connect(); // Re-adicionado
+        socket.connect();
     } else {
         LoginDOM.view.hidden = false;
         DOM.appEl.hidden = true;
