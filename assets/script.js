@@ -35,15 +35,6 @@ function renderAvatar(element, { user, avatar_url }) {
   }
 }
 
-// 👇 NOVO: Função para abrir o Modal de Input Genérico
-/**
- * Abre um modal para pedir input ao utilizador.
- * @param {object} options
- * @param {string} options.title - O título do modal
- * @param {string} options.initialValue - O valor inicial do textarea
- * @param {string} options.placeholder - O placeholder do textarea
- * @param {function(string): void} options.onSave - Função callback chamada com o novo valor
- */
 function openInputModal({ title, initialValue = '', placeholder = '', onSave }) {
     DOM.modalTitle.textContent = title;
     DOM.modalInput.value = initialValue;
@@ -51,20 +42,17 @@ function openInputModal({ title, initialValue = '', placeholder = '', onSave }) 
     DOM.modalView.hidden = false;
     DOM.modalInput.focus();
     
-    // Define o que o botão "Salvar" faz
     DOM.modalForm.onsubmit = (e) => {
         e.preventDefault();
         const newValue = DOM.modalInput.value.trim();
         
-        // Só executa o 'onSave' se o valor for válido
         if (newValue) {
             onSave(newValue);
         }
         
-        DOM.modalView.hidden = true; // Fecha o modal
+        DOM.modalView.hidden = true;
     };
 }
-// 👆 FIM DA NOVA FUNÇÃO
 
 // ===================================================
 // 2. LÓGICA DE API E RENDERIZAÇÃO
@@ -151,8 +139,6 @@ async function apiGetComments(postId) {
   } catch (err) { console.error(`Falha ao buscar comentários para o post ${postId}:`, err); }
 }
 
-// 👇 MUDANÇA: 'apiCreateComment' agora não precisa de 'text', 
-// pois o 'openInputModal' é que o vai obter.
 async function apiCreateComment(postId) {
   openInputModal({
     title: "Escreva um comentário",
@@ -165,7 +151,7 @@ async function apiCreateComment(postId) {
           headers: { 'Content-Type': 'application/json' }, 
           body: JSON.stringify({ user: currentUser, text: text }) 
         });
-        apiGetComments(postId); // Recarrega os comentários
+        apiGetComments(postId);
       } catch (err) { 
         console.error("Falha ao criar comentário:", err); 
         alert("Falha ao salvar comentário.");
@@ -212,7 +198,6 @@ async function apiGetProfile(username) {
   }
 } 
 
-// 👇 MUDANÇA: 'apiUpdateMood' agora usa o 'openInputModal'
 async function apiUpdateMood() {
   const currentMood = DOM.userbarMood.textContent;
   
@@ -239,7 +224,6 @@ async function apiUpdateMood() {
   });
 }
 
-// 👇 MUDANÇA: 'apiUpdateBio' agora usa o 'openInputModal'
 async function apiUpdateBio() {
   const currentBio = DOM.profileBioEl.textContent;
   
@@ -509,6 +493,7 @@ function renderExploreCommunities(communities) {
 // 3. LÓGICA DO CHAT (Socket.IO)
 // ===================================================
 
+// 👇 MUDANÇA: 'renderChannel' agora restaura a UI da comunidade
 function renderChannel(name) {
   activeChannel = name; 
   DOM.chatMessagesEl.innerHTML = ""; 
@@ -525,22 +510,38 @@ function renderChannel(name) {
   socket.emit('joinChannel', { channel: activeChannel, user: currentUser });
 }
 
+// 👇 MUDANÇA: 'renderDirectMessage' (função DM) CORRIGIDA
 function renderDirectMessage(roomName, targetUser) {
-    activeChannel = roomName;
+    activeChannel = roomName; // Define o canal global
     
-    activateCommunityView('chat-channels', { community: null });
+    // --- 1. Lógica Manual de 'activateView'/'activateCommunityView' ---
+    Object.values(DOM.views).forEach(view => view.hidden = true);
+    DOM.appEl.classList.remove("view-home");
+    DOM.appEl.classList.add("view-community");
     
+    DOM.mainHeader.hidden = true; 
+    DOM.channelsEl.hidden = false;
+    DOM.chatView.hidden = false;
+    
+    document.querySelectorAll(".servers .server, .servers .add-btn").forEach(b => b.classList.remove("active"));
+    DOM.homeBtn.classList.add("active"); // Ativa o "A" de Home
+    // --- Fim da lógica manual ---
+
+    // 2. Limpa o chat e define a UI para DM
+    DOM.chatMessagesEl.innerHTML = "";
     DOM.chatTopicBadge.textContent = `@ ${targetUser}`;
     DOM.chatInputEl.placeholder = `Envie uma mensagem para @${targetUser}`;
     
+    // 3. Esconde a UI específica de Comunidades
     document.querySelectorAll(".channel").forEach(c => c.classList.remove("active"));
-    
     DOM.communityChatChannelsList.hidden = true;
     DOM.communityTabs.forEach(b => b.style.display = 'none');
     if (DOM.communityCard) DOM.communityCard.hidden = true;
 
+    // 4. Entra na sala (agora com o 'activeChannel' correto)
     socket.emit('joinChannel', { channel: activeChannel, user: currentUser });
 }
+// 👆 FIM DA MUDANÇA
 
 function startDM(targetUser) {
     if (targetUser === currentUser) return;
@@ -605,11 +606,10 @@ function handlePostClick(e) {
     return;
   }
   
-  // 👇 MUDANÇA: 'prompt()' removido
   const commentButton = e.target.closest('[data-comment]');
   if (commentButton) {
     const postId = commentButton.dataset.comment;
-    apiCreateComment(postId); // Chama a nova função que abre o modal
+    apiCreateComment(postId);
     return;
   }
 }
@@ -696,7 +696,7 @@ async function showDynamicProfile(username) {
   
   if (username === currentUser) {
     DOM.editBioBtn.textContent = "Editar bio";
-    DOM.editBioBtn.onclick = apiUpdateBio; // Remove o prompt()
+    DOM.editBioBtn.onclick = apiUpdateBio;
     DOM.editBioBtn.disabled = false;
     DOM.profileAvatarEl.classList.add('is-owner');
     
@@ -803,14 +803,12 @@ function mapAppDOM() {
     DOM.dmBtn = document.getElementById("dmBtn");
     DOM.communityCard = document.querySelector('.community-card');
     
-    // 👇 NOVO: IDs do Modal
     DOM.modalView = document.getElementById("input-modal");
     DOM.modalForm = document.getElementById("modal-form");
     DOM.modalTitle = document.getElementById("modal-title");
     DOM.modalInput = document.getElementById("modal-input");
     DOM.modalSaveBtn = document.getElementById("modal-save-btn");
     DOM.modalCancelBtn = document.getElementById("modal-cancel-btn");
-    // 👆 FIM DA MUDANÇA
     
     DOM.exploreServersView = document.getElementById("view-explore-servers");
     DOM.exploreServersBtn = document.getElementById("explore-servers-btn");
@@ -866,7 +864,6 @@ function bindAppEvents() {
     DOM.homeBtn.addEventListener("click", () => { activateView("feed"); });
     DOM.exploreServersBtn.addEventListener("click", () => { activateView("explore-servers"); });
     
-    // 👇 NOVO: Evento para fechar o modal
     DOM.modalCancelBtn.addEventListener("click", () => {
         DOM.modalView.hidden = true;
     });
