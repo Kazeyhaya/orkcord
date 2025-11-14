@@ -429,6 +429,7 @@ a{color:inherit;text-decoration:none}
 
 
 /* Responsivo */
+/* Responsivo */
 @media (max-width: 1080px){
   .app.view-community {
     grid-template-columns:72px 1fr;
@@ -441,6 +442,8 @@ a{color:inherit;text-decoration:none}
     grid-template-areas: "servers header" "servers content" "servers userbar";
   }
 }
+
+/* Tablet (720px) - Mantém botões, esconde título */
 @media (max-width: 720px){
   .app.view-community {
     grid-template-columns:64px 1fr;
@@ -452,7 +455,52 @@ a{color:inherit;text-decoration:none}
     grid-template-rows:64px 1fr 64px;
     grid-template-areas: "servers header" "servers content" "servers userbar";
   }
-  .header-actions{display:none}
+  
+  /* 👇 MUDANÇA AQUI 👇 */
+  /* Esconde o "Agora" para dar espaço aos botões */
+  .brand-title {
+    display: none; 
+  }
+  /* A linha ".header-actions{display:none}" foi REMOVIDA */
+}
+
+/* Smartphone (640px) - Esconde servers, empilha tudo */
+@media (max-width: 640px) {
+  .app {
+    padding: 8px; /* Menos espaço nas bordas */
+    gap: 8px;
+  }
+
+  .servers {
+    display: none; /* Esconde a barra de servidores */
+  }
+  
+  .app.view-home {
+    grid-template-columns: 1fr; /* Coluna única */
+    grid-template-rows: 64px 1fr 64px;
+    grid-template-areas: 
+      "header"
+      "content"
+      "userbar";
+  }
+
+  .app.view-community {
+    grid-template-columns: 1fr; /* Coluna única */
+    grid-template-rows: auto 1fr 64px; /* O 'auto' é para os canais */
+    grid-template-areas: 
+      "channels"
+      "content"
+      "userbar";
+  }
+  
+  .channels {
+    min-width: unset; /* Remove a largura mínima */
+  }
+  
+  /* Faz o perfil ter uma só coluna */
+  .profile-body {
+    grid-template-columns: 1fr;
+  }
 }
 
 
