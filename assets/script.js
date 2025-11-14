@@ -275,13 +275,14 @@ async function apiGetCommunityPosts(communityId) {
     try {
         const res = await fetch(`/api/community/${communityId}/posts`);
         const data = await res.json();
-        renderCommunityPosts(data.posts || []);
+        renderCommunityPosts(data.posts || []); // 'data.posts' agora inclui 'avatar_url'
     } catch (err) {
         console.error("Erro ao buscar posts do fórum:", err);
         if (DOM.communityTopicList) DOM.communityTopicList.innerHTML = "<div class='meta'>Falha ao carregar posts do fórum.</div>";
     }
 }
 
+// 👇 MUDANÇA AQUI (Usa o 'renderAvatar') 👇
 function renderCommunityPosts(posts) {
     if (!DOM.communityTopicList) return;
     DOM.communityTopicList.innerHTML = "";
@@ -293,50 +294,81 @@ function renderCommunityPosts(posts) {
         const node = document.createElement("div");
         node.className = "post"; 
         
-        const userInitial = post.user.slice(0, 2).toUpperCase();
         const postTime = new Date(post.timestamp).toLocaleString('pt-BR');
-        node.innerHTML = `
-            <div class="avatar-display post-avatar">${escapeHtml(userInitial)}</div>
-            <div>
-                <div class="meta">
-                    <strong class="post-username" data-username="${escapeHtml(post.user)}">
-                        ${escapeHtml(post.user)}
-                    </strong> 
-                    • ${postTime}
-                </div>
-                <h3>${escapeHtml(post.title)}</h3>
-                <div>${escapeHtml(post.content)}</div>
-                <div class="post-actions">
-                    <button class="mini-btn">💬 Comentários</button>
-                </div>
-            </div>`;
+        
+        // 1. Cria o avatar
+        const avatarEl = document.createElement('div');
+        avatarEl.className = 'avatar-display post-avatar';
+        renderAvatar(avatarEl, { user: post.user, avatar_url: post.avatar_url });
+        
+        // 2. Cria o conteúdo
+        const contentEl = document.createElement('div');
+        contentEl.innerHTML = `
+            <div class="meta">
+                <strong class="post-username" data-username="${escapeHtml(post.user)}">
+                    ${escapeHtml(post.user)}
+                </strong> 
+                • ${postTime}
+            </div>
+            <h3>${escapeHtml(post.title)}</h3>
+            <div>${escapeHtml(post.content)}</div>
+            <div class="post-actions">
+                <button class="mini-btn">💬 Comentários</button>
+            </div>
+        `;
+        
+        // 3. Adiciona os dois ao 'node'
+        node.appendChild(avatarEl);
+        node.appendChild(contentEl);
+        
         DOM.communityTopicList.appendChild(node);
     });
 }
+// 👆 FIM DA MUDANÇA 👆
 
 async function apiGetFollowing(username) {
   try {
     const res = await fetch(`/api/following/${encodeURIComponent(username)}`);
     if (!res.ok) return;
     const data = await res.json();
-    renderFollowing(data.following || []);
+    renderFollowing(data.following || []); // 'data.following' agora é uma lista de objetos
   } catch (err) { console.error("Erro ao buscar lista de 'seguindo':", err); if (DOM.friendsContainer) DOM.friendsContainer.innerHTML = "<div class='meta'>Falha ao carregar amigos.</div>"; }
 }
 
+// 👇 MUDANÇA AQUI (Usa o 'renderAvatar') 👇
 function renderFollowing(followingList) {
   if (!DOM.friendsContainer) return;
   DOM.friendsContainer.innerHTML = ""; 
   if (followingList.length === 0) { DOM.friendsContainer.innerHTML = "<div class='meta'>Ainda não segue ninguém.</div>"; return; }
-  followingList.forEach(username => {
+  
+  followingList.forEach(friend => { // 'friend' agora é { user, avatar_url }
     const node = document.createElement("div");
     node.className = "friend-card";
     
-    const userInitial = username.slice(0, 2).toUpperCase();
-    node.innerHTML = `<div class="avatar-display post-avatar" style="width: 32px; height: 32px; border-radius: 8px; font-size: 0.9rem;">${escapeHtml(userInitial)}</div><strong class="friend-card-name" data-username="${escapeHtml(username)}">${escapeHtml(username)}</strong>`;
+    // 1. Cria o avatar
+    const avatarEl = document.createElement('div');
+    avatarEl.className = 'avatar-display';
+    // Estilos inline para o tamanho pequeno do "friend-card"
+    avatarEl.style.width = '32px';
+    avatarEl.style.height = '32px';
+    avatarEl.style.borderRadius = '8px';
+    avatarEl.style.fontSize = '0.9rem';
+    renderAvatar(avatarEl, friend); // Passa o objeto 'friend' inteiro
+    
+    // 2. Cria o nome
+    const nameEl = document.createElement('strong');
+    nameEl.className = 'friend-card-name';
+    nameEl.dataset.username = friend.user;
+    nameEl.textContent = escapeHtml(friend.user);
+
+    // 3. Adiciona os dois ao 'node'
+    node.appendChild(avatarEl);
+    node.appendChild(nameEl);
     
     DOM.friendsContainer.appendChild(node);
   });
 }
+// 👆 FIM DA MUDANÇA 👆
 
 async function apiJoinCommunity(communityId, button) {
   button.disabled = true;
@@ -435,13 +467,13 @@ function renderChannel(name) {
 function addMessageBubble({ user, timestamp, message }) {
   const item = document.createElement("div");
   item.className = "msg";
-  const userInitial = (user || "V").slice(0, 2).toUpperCase();
-  const time = timestamp ? timestamp.split(' ')[1] : 'agora'; 
+  const time = timestamp ? new Date(timestamp).toLocaleString('pt-BR').split(' ')[1] : 'agora'; // Formata o timestamp da BD
   const isScrolledToBottom = DOM.chatMessagesEl.scrollHeight - DOM.chatMessagesEl.clientHeight <= DOM.chatMessagesEl.scrollTop + 100;
   
   const avatarEl = document.createElement('div');
   avatarEl.className = 'avatar-display post-avatar';
-  renderAvatar(avatarEl, { user: user, avatar_url: null });
+  // O chat ainda não busca avatares, então usamos 'null'
+  renderAvatar(avatarEl, { user: user, avatar_url: null }); 
 
   item.innerHTML = `
     ${avatarEl.outerHTML}
@@ -456,7 +488,8 @@ function addMessageBubble({ user, timestamp, message }) {
 function sendChatMessage() {
   const text = DOM.chatInputEl.value.trim();
   if (!text) return;
-  const messageData = { channel: activeChannel, user: currentUser, message: text, timestamp: new Date().toLocaleString('pt-BR') };
+  // O cliente já não envia timestamp; o servidor (BD) é que o gera
+  const messageData = { channel: activeChannel, user: currentUser, message: text };
   socket.emit('sendMessage', messageData);
   DOM.chatInputEl.value = "";
   DOM.chatInputEl.focus();
@@ -573,20 +606,17 @@ async function showDynamicProfile(username) {
 
   DOM.editBioBtn.disabled = true; 
   
-  // 👇 MUDANÇA: Lógica para esconder/mostrar o form de depoimento 👇
   if (username === currentUser) {
-    // É O DONO DO PERFIL
     DOM.editBioBtn.textContent = "Editar bio";
     DOM.editBioBtn.onclick = apiUpdateBio; 
     DOM.editBioBtn.disabled = false;
     DOM.profileAvatarEl.classList.add('is-owner');
     
-    DOM.testimonialFormContainer.hidden = true; // Esconde o form
+    DOM.testimonialFormContainer.hidden = true;
     
   } else {
-    // É OUTRO UTILIZADOR
     DOM.editBioBtn.disabled = false;
-    DOM.testimonialFormContainer.hidden = false; // Mostra o form
+    DOM.testimonialFormContainer.hidden = false;
     
     try {
       const res = await fetch(`/api/isfollowing/${encodeURIComponent(username)}?follower=${encodeURIComponent(currentUser)}`);
@@ -677,8 +707,6 @@ function mapAppDOM() {
     DOM.testimonialsEl = document.getElementById("testimonials");
     DOM.testimonialInput = document.getElementById("testimonialInput");
     DOM.testimonialSend = document.getElementById("testimonialSend");
-    
-    // 👇 MUDANÇA: Adiciona o novo ID
     DOM.testimonialFormContainer = document.getElementById("testimonial-form-container");
     
     DOM.exploreServersView = document.getElementById("view-explore-servers");

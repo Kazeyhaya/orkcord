@@ -10,7 +10,8 @@ class Profile {
         this.avatar_url = avatar_url || null; // URL da imagem
     }
 
-    // Salva (atualiza) a bio ou mood
+    // --- MÉTODOS DE INSTÂNCIA ---
+
     async save() {
         const result = await db.query(
             'INSERT INTO profiles ("user", bio, mood, avatar_url) VALUES ($1, $2, $3, $4) ON CONFLICT ("user") DO UPDATE SET bio = $2, mood = $3, avatar_url = $4 RETURNING *',
@@ -22,24 +23,40 @@ class Profile {
         return this;
     }
 
-    // (follow, unfollow, getFollowing, isFollowing ficam iguais...)
     async follow(userToFollow) {
         await db.query('INSERT INTO follows (follower_user, following_user) VALUES ($1, $2) ON CONFLICT DO NOTHING', [this.user, userToFollow]);
         return true;
     }
+
     async unfollow(userToUnfollow) {
         await db.query('DELETE FROM follows WHERE follower_user = $1 AND following_user = $2', [this.user, userToUnfollow]);
         return true;
     }
+
+    // 👇 MUDANÇA AQUI (Query com LEFT JOIN) 👇
+    // Obtém a lista de quem este perfil (this.user) segue
     async getFollowing() {
-        const result = await db.query('SELECT following_user FROM follows WHERE follower_user = $1', [this.user]);
-        return result.rows.map(r => r.following_user);
+        const result = await db.query(
+            `SELECT f.following_user, p.avatar_url 
+             FROM follows f
+             LEFT JOIN profiles p ON f.following_user = p."user"
+             WHERE f.follower_user = $1`, 
+            [this.user]
+        );
+        // Retorna [{ user: 'ana', avatar_url: '...' }, { user: 'rui', avatar_url: null }]
+        // Renomeia 'following_user' para 'user' para consistência
+        return result.rows.map(r => ({
+            user: r.following_user,
+            avatar_url: r.avatar_url
+        }));
     }
+    // 👆 FIM DA MUDANÇA 👆
+
     async isFollowing(userToCheck) {
         const result = await db.query('SELECT 1 FROM follows WHERE follower_user = $1 AND following_user = $2', [this.user, userToCheck]);
         return result.rows.length > 0;
     }
-    
+
     // --- MÉTODOS ESTÁTICOS ("Fábricas") ---
     
     static async findByUser(username) {
@@ -57,8 +74,7 @@ class Profile {
         );
         return result.rows[0].mood;
     }
-
-    // SALVAR O AVATAR NO CLOUDINARY
+    
     static async updateAvatar(username, avatarUrl) {
          const result = await db.query(
             'INSERT INTO profiles ("user", avatar_url) VALUES ($1, $2) ON CONFLICT ("user") DO UPDATE SET avatar_url = $2 RETURNING avatar_url',
