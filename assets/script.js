@@ -762,10 +762,12 @@ function activateCommunityView(name, options = {}) {
 // ===================================================
 // 6. LÓGICA DE PERFIL DINÂMICO E SEGUIR
 // ===================================================
+
+// 👇 MUDANÇA: 'showDynamicProfile' agora limpa os dados antigos 👇
 async function showDynamicProfile(username) {
   if (!username) return;
 
-  // 1. Limpa os dados do perfil anterior
+  // 1. Limpa os dados do perfil anterior (para evitar "fantasmas")
   DOM.profileNameEl.textContent = username;
   DOM.profileBioEl.textContent = "Carregando bio...";
   DOM.profileMoodEl.textContent = "Mood: ...";
