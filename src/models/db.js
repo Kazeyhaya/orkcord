@@ -23,7 +23,7 @@ async function setupDatabase() {
     await client.query(`CREATE TABLE IF NOT EXISTS community_posts (id SERIAL PRIMARY KEY, community_id INT NOT NULL REFERENCES communities(id) ON DELETE CASCADE, "user" TEXT NOT NULL, title TEXT NOT NULL, content TEXT, likes INT DEFAULT 0, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS channels (id SERIAL PRIMARY KEY, community_id INT NOT NULL REFERENCES communities(id) ON DELETE CASCADE, name TEXT NOT NULL, is_voice BOOLEAN DEFAULT FALSE, timestamp TIMESTAMPTZ DEFAULT NOW())`);
 
-    // Tabela de Avaliações (que faltava)
+    // Tabela de Avaliações (A que está a causar o Erro 500)
     await client.query(`CREATE TABLE IF NOT EXISTS profile_ratings (
         id SERIAL PRIMARY KEY,
         from_user TEXT NOT NULL,

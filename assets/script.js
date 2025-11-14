@@ -169,7 +169,7 @@ async function apiGetProfile(username) {
   try {
     const res = await fetch(`/api/profile/${encodeURIComponent(username)}`);
     if (!res.ok) {
-        throw new Error(`Falha na API: ${res.status}`); // Força o 'catch'
+        throw new Error(`Falha na API: ${res.status}`);
     }
     
     const data = await res.json(); 
@@ -194,7 +194,6 @@ async function apiGetProfile(username) {
 
   } catch (err) { 
     console.error("Falha ao buscar perfil:", err);
-    // Define o estado de erro (para corrigir o bug da 'foto fantasma')
     if (DOM.profileBioEl) DOM.profileBioEl.textContent = "Erro ao carregar bio.";
     if (DOM.profileMoodEl) DOM.profileMoodEl.textContent = "Mood: (erro)";
     if (DOM.ratingsDisplayContainer) DOM.ratingsDisplayContainer.innerHTML = "<div class='meta'>Erro ao carregar avaliações.</div>";
