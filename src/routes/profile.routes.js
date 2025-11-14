@@ -9,9 +9,12 @@ router.get('/profile/:username', profileController.getProfileBio);
 router.post('/profile', profileController.updateProfileBio);
 router.post('/profile/mood', profileController.updateUserMood);
 
-//  NOVA ROTA DE UPLOAD DE AVATAR
-// O 'upload.single("avatar")' processa o ficheiro ANTES do 'updateUserAvatar'
+// ROTA DE UPLOAD DE AVATAR
 router.post('/profile/avatar', upload.single('avatar'), profileController.updateUserAvatar);
+
+// 👇 --- ADICIONE ESTA LINHA --- 👇
+router.post('/profile/rate', profileController.addProfileRating);
+// 👆 --- FIM DA LINHA ADICIONADA --- 👆
 
 // Rotas de "Seguir" (Amigos)
 router.get('/following/:username', profileController.getFollowingList);
