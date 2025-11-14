@@ -28,15 +28,15 @@
   <div class="modal-overlay" id="input-modal" hidden>
     <form class="modal-card" id="modal-form">
       <h3 id="modal-title" style="margin-bottom: 15px;">Título do Modal</h3>
-      
       <textarea class="input" id="modal-input" required style="width: 100%; min-height: 80px;"></textarea>
-      
       <div style="display: flex; gap: 10px; width: 100%; margin-top: 10px;">
         <button class="mini-btn" type="button" id="modal-cancel-btn" style="flex: 1;">Cancelar</button>
         <button class="send" type="submit" id="modal-save-btn" style="flex: 2;">Salvar</button>
       </div>
     </form>
   </div>
+
+
   <div class="app" hidden>
     <aside class="servers" aria-label="Comunidades">
       <div id="home-btn" class="server active" title="Agora">
@@ -75,29 +75,13 @@
       
       <div class="view-tabs" style="padding-left: 10px; margin-top: 10px;">
           <button class="pill active" data-community-view="topics">Tópicos</button>
-          <button class="pill" data-community-view="chat-channels">Chat</button>
-          <button class="pill" data-community-view="members">Membros</button>
+          <button class="pill" data-community-view="members">Membros</button> 
       </div>
       
-      <div id="community-chat-channels">
-          <div class="chan-section">
-            <div class="chan-title">Canais de Texto</div>
-            <div class="channel active" data-channel="geral"><span class="hash">#</span><span>geral</span></div>
-            <div class="channel" data-channel="scraps"><span class="hash">#</span><span>scraps</span></div>
-            <div class="channel" data-channel="testimonials"><span class="hash">#</span><span>depoimentos</span></div>
-            <div class="channel" data-channel="albums"><span class="hash">#</span><span>álbuns</span></div>
-          </div>
-          <div class="chan-section">
-            <div class="chan-title">Canais de Voz</div>
-            <div class="channel" data-channel="voz-g1">🎙️ geral</div>
-            <div class="channel" data-channel="voz-music">🎶 música</div>
-          </div>
-      </div>
     </aside>
-
     <section class="feed" id="view-feed">
       <div class="feed-top">
-        <div class="chat-topic"><div class="topic-badge">Feed</div><span class="meta">— Posts de quem você segue</span></div>
+        <div class="chat-topic"><div class="topic-badge">Agora Feed</div><span class="meta">— Posts de quem você segue</span></div>
         <div class="chat-actions"><button class="icon-btn" id="btn-refresh">🔄</button></div>
       </div>
       <div class="composer-feed">
@@ -110,21 +94,18 @@
 
     <main class="chat" aria-live="polite" id="view-chat" hidden>
       <div class="chat-top">
-        <div class="chat-topic"><div class="topic-badge" id="topic"># geral</div><span class="meta">— Bem-vindo ao Agora!</span></div>
+        <div class="chat-topic"><div class="topic-badge" id="topic">@ Utilizador</div><span class="meta">— Mensagem Direta</span></div>
         <div class="chat-actions">
           <button class="icon-btn" title="Pesquisar" id="btn-search">🔎</button>
-          <button class="icon-btn" title="Fixados" id="btn-pin">📌</button>
-          <button class="icon-btn" title="Membros" id="btn-members">👥</button>
         </div>
       </div>
       <div class="messages" id="messages" role="log">
       </div>
       <div class="composer">
-        <input class="input" id="composerInput" type="text" placeholder="Envie uma mensagem para #geral" autocomplete="off" aria-label="Mensagem">
+        <input class="input" id="composerInput" type="text" placeholder="Envie uma mensagem..." autocomplete="off" aria-label="Mensagem">
         <button class="send" id="sendBtn">Enviar</button>
       </div>
     </main>
-    
     <section class="profile" id="view-profile" hidden>
       <div class="profile-top"><div class="chat-topic"><div class="topic-badge">Perfil</div><span class="meta">— Seu perfil social</span></div></div>
       <div class="profile-body">
@@ -214,6 +195,26 @@
         </div>
         <div class="card">
             <div class="friends" id="community-member-list">
+            </div>
+        </div>
+    </section>
+    
+    <section class="create-topic" id="view-create-topic" hidden>
+       <div class="explore-servers-top">
+            <h2>Criar Novo Tópico</h2>
+        </div>
+        <div class="profile-body" style="grid-template-columns: 1fr;">
+            <div class="card" style="max-width: 800px;">
+                <form id="create-topic-form">
+                    <label for="topic-title">Título do Tópico:</label>
+                    <input class="input" id="topic-title" type="text" required placeholder="Ex: Qual a vossa música favorita?">
+                    
+                    <label for="topic-content" style="margin-top: 10px;">Conteúdo:</label>
+                    <textarea class="input" id="topic-content" required placeholder="Escreva a sua mensagem..." style="min-height: 150px;"></textarea>
+                    
+                    <button class="send" type="submit" style="margin-top: 15px;">Publicar Tópico</button>
+                    <button type="button" class="mini-btn" id="btn-cancel-topic" style="margin-left: 10px;">Cancelar</button>
+                </form>
             </div>
         </div>
     </section>

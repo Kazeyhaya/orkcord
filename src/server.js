@@ -1,14 +1,14 @@
 // src/server.js
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
+const { Server } = require('socket.io'); // Re-adicionado
 const path = require('path');
 const db = require('./models/db');
 
 // --- CONFIGURAÇÃO INICIAL ---
-const app = express(); // O 'app' que vamos exportar
+const app = express();
 const server = http.createServer(app);
-const io = new Server(server); 
+const io = new Server(server); // Re-adicionado
 const port = process.env.PORT || 3000;
 
 // --- MIDDLEWARES ---
@@ -40,13 +40,12 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'agora.html')); 
 });
 
-// --- LÓGICA DO SOCKET.IO ---
-const { initializeSocket } = require('./socket/chat.handler');
-initializeSocket(io);
+// --- LÓGICA DO SOCKET.IO (Apenas para DMs) ---
+const { initializeSocket } = require('./socket/chat.handler'); // Re-adicionado
+initializeSocket(io); // Re-adicionado
 
 
 // --- INICIAR O SERVIDOR ---
-// Esta lógica só corre se o ficheiro NÃO estiver a ser importado (ex: nos testes)
 if (require.main === module) {
   db.setupDatabase().then(() => {
     server.listen(port, () => {
@@ -58,6 +57,4 @@ if (require.main === module) {
   });
 }
 
-// --- EXPORTAÇÃO ---
-// Exporta o 'app' (express) para que os testes o possam usar
 module.exports = app;

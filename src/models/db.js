@@ -8,55 +8,59 @@ const pool = new Pool({
   }
 });
 
-// Função para criar E MIGRAR tabelas
 async function setupDatabase() {
   const client = await pool.connect();
   try {
-    // --- 1. CRIAÇÃO DE TABELAS (para novas BDs) ---
+    // --- 1. CRIAÇÃO DE TABELAS ---
     await client.query(`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, channel TEXT NOT NULL, "user" TEXT NOT NULL, message TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS posts (id SERIAL PRIMARY KEY, "user" TEXT NOT NULL, text TEXT NOT NULL, likes INT DEFAULT 0, timestamp TIMESTAMPTZ DEFAULT NOW())`);
-    
-    // Cria a tabela 'profiles' de forma básica
-    await client.query(`CREATE TABLE IF NOT EXISTS profiles (
-        "user" TEXT PRIMARY KEY, 
-        bio TEXT
-    )`);
-
+    await client.query(`CREATE TABLE IF NOT EXISTS profiles ("user" TEXT PRIMARY KEY, bio TEXT, mood TEXT, avatar_url TEXT)`);
     await client.query(`CREATE TABLE IF NOT EXISTS testimonials (id SERIAL PRIMARY KEY, "from_user" TEXT NOT NULL, "to_user" TEXT NOT NULL, text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS comments (id SERIAL PRIMARY KEY, post_id INT NOT NULL REFERENCES posts(id) ON DELETE CASCADE, "user" TEXT NOT NULL, text TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS follows (id SERIAL PRIMARY KEY, follower_user TEXT NOT NULL, following_user TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW(), UNIQUE(follower_user, following_user))`);
-    await client.query(`CREATE TABLE IF NOT EXISTS communities (id SERIAL PRIMARY KEY, name TEXT NOT NULL, description TEXT, emoji TEXT, members INT DEFAULT 0, timestamp TIMESTAMPTZ DEFAULT NOW())`);
+    
+    // 👇 MUDANÇA AQUI 👇
+    await client.query(`CREATE TABLE IF NOT EXISTS communities (
+        id SERIAL PRIMARY KEY, 
+        name TEXT NOT NULL, 
+        description TEXT, 
+        emoji TEXT, 
+        members INT DEFAULT 0, 
+        timestamp TIMESTAMPTZ DEFAULT NOW(),
+        owner_user TEXT 
+    )`);
+    // 👆 FIM DA MUDANÇA 👆
+    
     await client.query(`CREATE TABLE IF NOT EXISTS community_members (id SERIAL PRIMARY KEY, user_name TEXT NOT NULL, community_id INT NOT NULL REFERENCES communities(id) ON DELETE CASCADE, timestamp TIMESTAMPTZ DEFAULT NOW(), UNIQUE(user_name, community_id))`);
     await client.query(`CREATE TABLE IF NOT EXISTS community_posts (id SERIAL PRIMARY KEY, community_id INT NOT NULL REFERENCES communities(id) ON DELETE CASCADE, "user" TEXT NOT NULL, title TEXT NOT NULL, content TEXT, likes INT DEFAULT 0, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     await client.query(`CREATE TABLE IF NOT EXISTS channels (id SERIAL PRIMARY KEY, community_id INT NOT NULL REFERENCES communities(id) ON DELETE CASCADE, name TEXT NOT NULL, is_voice BOOLEAN DEFAULT FALSE, timestamp TIMESTAMPTZ DEFAULT NOW())`);
     
     console.log('Tabelas verificadas/criadas.');
 
-    // --- 2. MIGRAÇÃO DA BD (para BDs existentes) ---
-    // Adiciona a coluna 'mood' se ela não existir
+    // --- 2. MIGRAÇÃO DA BD ---
     try {
         await client.query('ALTER TABLE profiles ADD COLUMN IF NOT EXISTS mood TEXT');
         console.log('MIGRAÇÃO OK: Coluna "mood" verificada/adicionada.');
     } catch (e) {
-        // Se o erro for "column ... already exists", ignora
-        if (e.code !== '42701') {
-            console.error('Erro migração "mood":', e.message);
-        }
+        if (e.code !== '42701') console.error('Erro migração "mood":', e.message);
     }
-
-    // Adiciona a coluna 'avatar_url' se ela não existir
     try {
         await client.query('ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT');
         console.log('MIGRAÇÃO OK: Coluna "avatar_url" verificada/adicionada.');
     } catch (e) {
-        // Se o erro for "column ... already exists", ignora
-        if (e.code !== '42701') {
-            console.error('Erro migração "avatar_url":', e.message);
-        }
+        if (e.code !== '42701') console.error('Erro migração "avatar_url":', e.message);
     }
-    // --- FIM DA MIGRAÇÃO ---
+    
+    // 👇 NOVA MIGRAÇÃO 👇
+    try {
+        await client.query('ALTER TABLE communities ADD COLUMN IF NOT EXISTS owner_user TEXT');
+        console.log('MIGRAÇÃO OK: Coluna "owner_user" (Dono) verificada/adicionada.');
+    } catch (e) {
+        if (e.code !== '42701') console.error('Erro migração "owner_user":', e.message);
+    }
+    // 👆 FIM DA MIGRAÇÃO 👆
 
-    await seedDatabase(client); // Chama a função de popular
+    await seedDatabase(client);
     
   } catch (err) {
     console.error('Erro geral em setupDatabase:', err);
@@ -65,17 +69,15 @@ async function setupDatabase() {
   }
 }
 
-// Função para popular dados (recebe o 'client' como argumento)
 async function seedDatabase(client) {
   try {
-    // Verifica se já existem comunidades
     const res = await client.query('SELECT 1 FROM communities LIMIT 1');
     if (res.rows.length === 0) {
       console.log('Populando o banco de dados com comunidades de teste...');
       
-      const tech = await client.query(`INSERT INTO communities (name, description, emoji, members) VALUES ('Tecnologia 💻', 'A comunidade oficial para falar de hardware, software e programação.', '💻', 1) RETURNING id`);
-      const music = await client.query(`INSERT INTO communities (name, description, emoji, members) VALUES ('Música 🎵', 'Do Rock ao Pop, partilhe as suas batidas favoritas.', '🎵', 1) RETURNING id`);
-      const games = await client.query(`INSERT INTO communities (name, description, emoji, members) VALUES ('Games 🎮', 'Discussão geral, do retro ao moderno. Encontre o seu "x1" aqui.', '🎮', 1) RETURNING id`);
+      const tech = await client.query(`INSERT INTO communities (name, description, emoji, members, owner_user) VALUES ('Tecnologia 💻', 'A comunidade oficial para falar de hardware, software e programação.', '💻', 1, 'Admin') RETURNING id`);
+      const music = await client.query(`INSERT INTO communities (name, description, emoji, members, owner_user) VALUES ('Música 🎵', 'Do Rock ao Pop, partilhe as suas batidas favoritas.', '🎵', 1, 'Admin') RETURNING id`);
+      const games = await client.query(`INSERT INTO communities (name, description, emoji, members, owner_user) VALUES ('Games 🎮', 'Discussão geral, do retro ao moderno. Encontre o seu "x1" aqui.', '🎮', 1, 'Admin') RETURNING id`);
       
       const techId = tech.rows[0].id;
       const musicId = music.rows[0].id;
@@ -91,7 +93,6 @@ async function seedDatabase(client) {
   }
 }
 
-// Exportamos o 'pool' para que os 'Modelos' o possam usar, e o 'setupDatabase' para o server.js
 module.exports = {
   query: (text, params) => pool.query(text, params),
   setupDatabase

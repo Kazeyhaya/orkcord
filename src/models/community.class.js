@@ -3,20 +3,23 @@ const db = require('./db');
 
 class Community {
     
-    constructor({ id, name, description, emoji, members }) {
+    // Adicionado 'owner_user'
+    constructor({ id, name, description, emoji, members, owner_user }) {
         this.id = id;
         this.name = name;
         this.description = description || "Bem-vindo a esta comunidade!";
         this.emoji = emoji || '💬';
         this.members = members || 0;
+        this.owner_user = owner_user || null; // O dono da comunidade
     }
 
     // --- MÉTODOS DE INSTÂNCIA ---
 
+    // Adicionado 'owner_user'
     async save() {
         const result = await db.query(
-            'INSERT INTO communities (name, emoji, description, members) VALUES ($1, $2, $3, $4) RETURNING *',
-            [this.name, this.emoji, this.description, this.members]
+            'INSERT INTO communities (name, emoji, description, members, owner_user) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [this.name, this.emoji, this.description, this.members, this.owner_user]
         );
         this.id = result.rows[0].id;
         return this;
@@ -32,8 +35,6 @@ class Community {
         return this;
     }
     
-    // 👇 MUDANÇA AQUI (Query com LEFT JOIN) 👇
-    // Obtém os posts desta comunidade (this.id)
     async getPosts() {
         const result = await db.query(
             `SELECT cp.*, p.avatar_url 
@@ -43,9 +44,8 @@ class Community {
              ORDER BY cp.timestamp DESC`, 
             [this.id]
         );
-        return result.rows; // Agora inclui 'avatar_url'
+        return result.rows;
     }
-    // 👆 FIM DA MUDANÇA 👆
 
     // --- MÉTODOS ESTÁTICOS ("Fábricas") ---
 
@@ -72,6 +72,23 @@ class Community {
             [userName]
         );
         return result.rows.map(row => new Community(row));
+    }
+    
+    // (Este método era 'createCommunity' no modelo antigo, agora está na Classe)
+    static async create(name, emoji, creator) {
+        // 1. Criar a comunidade
+        const community = new Community({
+            name: name,
+            emoji: emoji || '💬',
+            members: 1,
+            owner_user: creator // Define o criador como o dono
+        });
+        await community.save(); // Salva e obtém o ID
+        
+        // 2. Adicionar o criador como primeiro membro
+        await community.addMember(creator);
+        
+        return community;
     }
 }
 

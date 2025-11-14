@@ -5,11 +5,11 @@ class Message {
     
     constructor({ id, channel, user, message, timestamp, avatar_url }) {
         this.id = id;
-        this.channel = channel;
+        this.channel = channel; // (ex: "alexandre_tsuki")
         this.user = user;
         this.message = message;
         this.timestamp = timestamp || new Date();
-        this.avatar_url = avatar_url || null; // O avatar do JOIN
+        this.avatar_url = avatar_url || null;
     }
 
     // --- MÉTODOS DE INSTÂNCIA ---
@@ -40,7 +40,7 @@ class Message {
                 LIMIT 50
              ) AS m
              LEFT JOIN profiles p ON m."user" = p."user"
-             ORDER BY m.timestamp ASC`, // Re-ordena para o frontend (antigo > novo)
+             ORDER BY m.timestamp ASC`,
             [channelName]
         );
         

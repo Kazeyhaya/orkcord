@@ -2,7 +2,7 @@
 // 1. ESTADO GLOBAL E OBJETOS DOM
 // ===================================================
 let currentUser = null;
-let activeChannel = "geral"; 
+let activeChannel = null; // Começa nulo
 let viewedUsername = null;
 let currentCommunityId = null; 
 let currentCommunityName = null; 
@@ -23,9 +23,7 @@ function escapeHtml(s) {
 
 function renderAvatar(element, { user, avatar_url }) {
   if (!element) return;
-
   element.innerHTML = "";
-  
   if (avatar_url) {
     element.style.backgroundImage = `url(${avatar_url})`;
   } else {
@@ -45,11 +43,9 @@ function openInputModal({ title, initialValue = '', placeholder = '', onSave }) 
     DOM.modalForm.onsubmit = (e) => {
         e.preventDefault();
         const newValue = DOM.modalInput.value.trim();
-        
         if (newValue) {
             onSave(newValue);
         }
-        
         DOM.modalView.hidden = true;
     };
 }
@@ -331,6 +327,49 @@ async function apiGetCommunityPosts(communityId) {
     }
 }
 
+async function apiCreateCommunityPost(form) {
+    const title = DOM.topicTitleInput.value.trim();
+    const content = DOM.topicContentInput.value.trim();
+    
+    if (!title || !content) {
+        alert("Título e conteúdo são obrigatórios.");
+        return;
+    }
+    
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    button.textContent = "Publicando...";
+    
+    try {
+        const res = await fetch('/api/community/posts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                community_id: currentCommunityId,
+                user: currentUser,
+                title: title,
+                content: content
+            })
+        });
+        
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error);
+        }
+        
+        DOM.topicTitleInput.value = "";
+        DOM.topicContentInput.value = "";
+        activateCommunityView("topics", { community: currentCommunityId });
+
+    } catch (err) {
+        console.error("Erro ao criar tópico:", err);
+        alert(`Falha ao criar tópico: ${err.message}`);
+    }
+    
+    button.disabled = false;
+    button.textContent = "Publicar Tópico";
+}
+
 function renderCommunityPosts(posts) {
     if (!DOM.communityTopicList) return;
     DOM.communityTopicList.innerHTML = "";
@@ -490,29 +529,13 @@ function renderExploreCommunities(communities) {
 }
 
 // ===================================================
-// 3. LÓGICA DO CHAT (Socket.IO)
+// 3. LÓGICA DO CHAT (Apenas para DMs)
 // ===================================================
-
-function renderChannel(name) {
-  activeChannel = name; 
-  DOM.chatMessagesEl.innerHTML = ""; 
-  DOM.chatTopicBadge.textContent = `# ${name.replace("-", " ")}`;
-  DOM.chatInputEl.placeholder = `Envie uma mensagem para #${name}`;
-
-  DOM.communityChatChannelsList.hidden = false;
-  DOM.communityTabs.forEach(b => b.style.display = 'flex');
-  if (DOM.communityCard) DOM.communityCard.hidden = false;
-  
-  document.querySelectorAll(".channel").forEach(c => c.classList.remove("active"));
-  const activeBtn = document.querySelector(`.channel[data-channel="${name}"]`);
-  if (activeBtn) activeBtn.classList.add("active");
-  socket.emit('joinChannel', { channel: activeChannel, user: currentUser });
-}
 
 function renderDirectMessage(roomName, targetUser) {
     activeChannel = roomName;
     
-    // --- Lógica Manual de 'activateView' ---
+    // Mostra o layout de "comunidade" (que vamos usar para o chat)
     Object.values(DOM.views).forEach(view => view.hidden = true);
     DOM.appEl.classList.remove("view-home");
     DOM.appEl.classList.add("view-community");
@@ -521,17 +544,17 @@ function renderDirectMessage(roomName, targetUser) {
     DOM.channelsEl.hidden = false;
     DOM.chatView.hidden = false; // Mostra a view de chat
     
+    // Ativa o botão "Home" (A) em vez de um botão de comunidade
     document.querySelectorAll(".servers .server, .servers .add-btn").forEach(b => b.classList.remove("active"));
-    DOM.homeBtn.classList.add("active"); // Ativa o "A" de Home
-    // --- Fim da lógica manual ---
+    DOM.homeBtn.classList.add("active");
 
+    // Limpa o chat e define a UI para DM
     DOM.chatMessagesEl.innerHTML = "";
     DOM.chatTopicBadge.textContent = `@ ${targetUser}`;
     DOM.chatInputEl.placeholder = `Envie uma mensagem para @${targetUser}`;
     
-    document.querySelectorAll(".channel").forEach(c => c.classList.remove("active"));
-    
-    DOM.communityChatChannelsList.hidden = true;
+    // Esconde a UI de Comunidade (lista de canais, etc)
+    if (DOM.communityChatChannelsList) DOM.communityChatChannelsList.hidden = true;
     DOM.communityTabs.forEach(b => b.style.display = 'none');
     if (DOM.communityCard) DOM.communityCard.hidden = true;
 
@@ -617,18 +640,24 @@ function activateView(name, options = {}) {
   DOM.appEl.classList.remove("view-home", "view-community");
   document.querySelectorAll(".servers .server, .servers .add-btn").forEach(b => b.classList.remove("active"));
   
-  if (name === "feed" || name === "explore" || name === "profile" || name === "explore-servers" || name === "create-community") {
+  if (name === "feed" || name === "explore" || name === "profile" || name === "explore-servers" || name === "create-community" || name === "create-topic") {
     DOM.appEl.classList.add("view-home");
     DOM.mainHeader.hidden = false;
     DOM.channelsEl.hidden = true;
-    DOM.views[name].hidden = false;
+    
+    if (name === 'create-topic') {
+        DOM.mainHeader.hidden = true;
+        DOM.views[name].hidden = false;
+    } else {
+        DOM.views[name].hidden = false;
+    }
     
     if (name === 'explore-servers' || name === 'create-community') { DOM.exploreServersBtn.classList.add("active"); } else { DOM.homeBtn.classList.add("active"); }
     
     DOM.viewTabs.forEach(b => b.classList.toggle("active", b.dataset.view === name));
     DOM.btnExplore.classList.toggle("active", name === "explore");
     
-    if (name === 'profile' || name === 'explore-servers' || name === 'create-community') { 
+    if (name === 'profile' || name === 'explore-servers' || name === 'create-community' || name === 'create-topic') { 
       DOM.viewTabs.forEach(b => b.classList.remove("active"));
       DOM.btnExplore.classList.remove("active");
     }
@@ -640,8 +669,6 @@ function activateView(name, options = {}) {
     
   } 
 }
-
-// 👇 MUDANÇA: 'activateCommunityView' (função de Comunidade) CORRIGIDA
 function activateCommunityView(name, options = {}) {
     Object.values(DOM.views).forEach(view => view.hidden = true);
     DOM.appEl.classList.remove("view-home");
@@ -649,13 +676,11 @@ function activateCommunityView(name, options = {}) {
     
     DOM.mainHeader.hidden = true; 
     DOM.channelsEl.hidden = false; 
-    
-    // --- CORREÇÃO (Resetar a UI) ---
-    // Restaura a UI da comunidade que o DM (renderDirectMessage) escondeu
-    DOM.communityChatChannelsList.hidden = false; 
+
+    // Restaura a UI da comunidade
     DOM.communityTabs.forEach(b => b.style.display = 'flex');
     if (DOM.communityCard) DOM.communityCard.hidden = false;
-    // --- Fim da Correção ---
+    if (DOM.communityChatChannelsList) DOM.communityChatChannelsList.hidden = true; // Garante que o chat está escondido
 
     currentCommunityId = options.community;
     
@@ -667,20 +692,15 @@ function activateCommunityView(name, options = {}) {
 
     DOM.communityTopicView.hidden = true;
     DOM.communityMembersView.hidden = true;
-    DOM.chatView.hidden = true; 
+    DOM.chatView.hidden = true; // Esconde o chat por defeito
     
     if (name === "topics") {
         DOM.communityTopicView.hidden = false; 
         apiGetCommunityPosts(currentCommunityId); 
-    } else if (name === "chat-channels") {
-        DOM.chatView.hidden = false; 
-        DOM.communityChatChannelsList.hidden = false; // Garante que a lista está visível
-        renderChannel("geral"); 
     } else if (name === "members") {
         DOM.communityMembersView.hidden = false; 
     }
 }
-// 👆 FIM DA MUDANÇA
 
 // ===================================================
 // 6. LÓGICA DE PERFIL DINÂMICO E SEGUIR
@@ -822,6 +842,7 @@ function mapAppDOM() {
     DOM.btnShowCreateCommunity = document.getElementById("btn-show-create-community");
     DOM.btnCancelCreate = document.getElementById("btn-cancel-create");
     DOM.createCommunityForm = document.getElementById("create-community-form");
+    
     DOM.communityChannelBar = document.querySelector('aside.channels'); 
     DOM.communityTopicList = document.getElementById('community-topic-list');
     DOM.communityTopicView = document.getElementById('view-community-topics'); 
@@ -831,6 +852,14 @@ function mapAppDOM() {
     DOM.currentCommunityNameEl = document.getElementById('current-community-name');
     DOM.communityAvatarChannelEl = document.getElementById('community-avatar-channel');
     DOM.communityMembersCountEl = document.getElementById('community-members-count');
+    
+    DOM.btnNewTopic = document.getElementById("btn-new-topic");
+    DOM.createTopicView = document.getElementById("view-create-topic");
+    DOM.createTopicForm = document.getElementById("create-topic-form");
+    DOM.topicTitleInput = document.getElementById("topic-title");
+    DOM.topicContentInput = document.getElementById("topic-content");
+    DOM.btnCancelTopic = document.getElementById("btn-cancel-topic");
+
     DOM.appEl = document.querySelector(".app");
     DOM.mainHeader = document.querySelector(".header"); 
     DOM.channelsEl = document.querySelector(".channels");
@@ -838,22 +867,24 @@ function mapAppDOM() {
     DOM.serverBtns = document.querySelectorAll(".servers .server"); 
     DOM.homeBtn = document.getElementById("home-btn"); 
     DOM.headerHomeBtn = document.getElementById("header-home-btn"); 
+    
     DOM.views = {
         feed: DOM.feedView,
-        chat: DOM.chatView,
+        chat: DOM.chatView, // Re-adicionado
         profile: DOM.profileView,
         explore: DOM.exploreView,
         "explore-servers": DOM.exploreServersView,
         "create-community": DOM.createCommunityView,
         "community-topics": DOM.communityTopicView, 
-        "community-members": DOM.communityMembersView 
+        "community-members": DOM.communityMembersView,
+        "create-topic": DOM.createTopicView
     };
 }
 
 function bindAppEvents() {
     DOM.chatSendBtn.addEventListener("click", sendChatMessage);
     DOM.chatInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") sendChatMessage(); });
-    document.querySelectorAll(".channel[data-channel]").forEach(c => c.addEventListener("click", () => renderChannel(c.getAttribute("data-channel"))));
+    // Evento de 'renderChannel' removido
     DOM.postsEl.addEventListener("click", handlePostClick);
     DOM.explorePostsEl.addEventListener("click", handlePostClick); 
     DOM.feedSend.addEventListener("click", apiCreatePost);
@@ -900,16 +931,31 @@ function bindAppEvents() {
         if (!name) return;
         apiCreateCommunity(name, emoji, DOM.createCommunityForm.querySelector('button[type="submit"]'));
     });
+    
+    DOM.btnNewTopic.addEventListener("click", () => {
+        activateView("create-topic"); 
+    });
+    DOM.btnCancelTopic.addEventListener("click", () => {
+        activateCommunityView("topics", { community: currentCommunityId });
+    });
+    DOM.createTopicForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        apiCreateCommunityPost(DOM.createTopicForm);
+    });
+    
+    // Evento de clique nas abas da comunidade (simplificado)
     DOM.communityTabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const view = tab.dataset.communityView;
-            activateCommunityView(view, { community: currentCommunityId });
+            if (view) { // Só ativa se for 'topics' ou 'members'
+                activateCommunityView(view, { community: currentCommunityId });
+            }
         });
     });
 }
 
 function startApp() {
-  console.log('Socket conectado:', socket.id);
+  console.log('Socket conectado:', socket.id); // Re-adicionado
   mapAppDOM();
   bindAppEvents();
   
@@ -932,7 +978,7 @@ function handleLoginSubmit(e) {
     viewedUsername = currentUser;
     localStorage.setItem("agora:user", currentUser);
     
-    socket.connect();
+    socket.connect(); // Re-adicionado
 }
 
 function checkLogin() {
@@ -943,12 +989,12 @@ function checkLogin() {
 
     const storedUser = localStorage.getItem("agora:user");
     
-    socket.on('connect', startApp);
+    socket.on('connect', startApp); // Re-adicionado
 
     if (storedUser && storedUser.trim()) {
         currentUser = storedUser.trim();
         viewedUsername = currentUser;
-        socket.connect();
+        socket.connect(); // Re-adicionado
     } else {
         LoginDOM.view.hidden = false;
         DOM.appEl.hidden = true;

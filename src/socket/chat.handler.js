@@ -1,19 +1,19 @@
 // src/socket/chat.handler.js
 const Message = require('../models/message.class');
-const Profile = require('../models/profile.class'); // Importa o Perfil
+const Profile = require('../models/profile.class');
 
 function initializeSocket(io) {
 
   io.on('connection', (socket) => {
     console.log(`Um utilizador conectou-se: ${socket.id}`);
     
+    // Isto agora serve para DMs (ex: 'alexandre_tsuki')
     socket.on('joinChannel', async (data) => {
       try {
         const { channel, user } = data;
         socket.join(channel);
         console.log(`${user} entrou no canal: ${channel}`);
         
-        // O histórico da BD agora inclui os avatares
         const history = await Message.getHistory(channel);
         
         socket.emit('loadHistory', history);
@@ -28,9 +28,8 @@ function initializeSocket(io) {
         const { channel, user, message } = data;
         
         const newMessage = new Message({ channel, user, message });
-        await newMessage.save(); // Salva na BD
+        await newMessage.save();
         
-        // Busca o avatar do utilizador para retransmitir
         const profile = await Profile.findByUser(user);
         if (profile) {
           newMessage.avatar_url = profile.avatar_url;

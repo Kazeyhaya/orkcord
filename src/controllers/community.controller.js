@@ -56,22 +56,20 @@ const create = async (req, res) => {
     try {
         const { name, emoji, creator } = req.body;
         
-        // --- VALIDAÇÃO ---
         if (!name || !creator) {
             return res.status(400).json({ error: 'Nome e criador são obrigatórios' });
         }
         if (name.length > 50) {
             return res.status(400).json({ error: 'O nome da comunidade não pode exceder 50 caracteres.' });
         }
-        if (emoji && emoji.length > 5) { // Emoji é opcional, mas se existir, limita o tamanho
+        if (emoji && emoji.length > 5) {
              return res.status(400).json({ error: 'O emoji é muito longo.' });
         }
-        // --- FIM DA VALIDAÇÃO ---
         
-        const community = new Community({ name, emoji, members: 1 });
-        await community.save();
-        await community.addMember(creator);
-
+        // 👇 MUDANÇA: Usa o novo método estático da Classe
+        const community = await Community.create(name, emoji, creator);
+        // 👆 FIM DA MUDANÇA
+        
         res.status(201).json({ community });
     } catch (err) {
         console.error("Erro no controlador create:", err);
