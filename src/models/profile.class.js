@@ -11,7 +11,8 @@ class Profile {
     }
 
     // --- MÉTODOS DE INSTÂNCIA ---
-
+    // (save, follow, unfollow, getFollowing, isFollowing... continuam iguais)
+    
     async save() {
         const result = await db.query(
             'INSERT INTO profiles ("user", bio, mood, avatar_url) VALUES ($1, $2, $3, $4) ON CONFLICT ("user") DO UPDATE SET bio = $2, mood = $3, avatar_url = $4 RETURNING *',
@@ -52,28 +53,43 @@ class Profile {
         return result.rows.length > 0;
     }
 
-    // 👇 NOVO MÉTODO (para buscar os votos deste perfil) 👇
-    async getRatings() {
-        const result = await db.query(
+
+    // 👇 MÉTODO ATUALIZADO (getRatings) 👇
+    // Agora aceita 'currentViewer' para saber quem está a ver o perfil
+    async getRatings(currentViewer) {
+        // Query 1: Busca os totais de votos (como antes)
+        const totalsResult = await db.query(
             `SELECT rating_type, COUNT(*) as count 
              FROM profile_ratings 
              WHERE to_user = $1 
              GROUP BY rating_type`,
-            [this.user]
+            [this.user] // 'this.user' é o dono do perfil (ex: 'Alexandre')
         );
         
-        // Inicializa os contadores
-        const counts = { confiavel: 0, legal: 0, divertido: 0 };
-        
-        // Preenche com os valores da BD
-        for (const row of result.rows) {
-            if (counts[row.rating_type] !== undefined) {
-                counts[row.rating_type] = parseInt(row.count, 10);
+        const totals = { confiavel: 0, legal: 0, divertido: 0 };
+        for (const row of totalsResult.rows) {
+            if (totals[row.rating_type] !== undefined) {
+                totals[row.rating_type] = parseInt(row.count, 10);
             }
         }
-        return counts;
+
+        // Query 2: Busca os votos específicos que o 'currentViewer' deu a este perfil
+        let userVotes = [];
+        if (currentViewer) {
+            const userVotesResult = await db.query(
+                `SELECT rating_type 
+                 FROM profile_ratings 
+                 WHERE to_user = $1 AND from_user = $2`,
+                [this.user, currentViewer] // [Dono do Perfil, Quem está a Ver]
+            );
+            // Retorna ex: ['confiavel', 'legal']
+            userVotes = userVotesResult.rows.map(row => row.rating_type);
+        }
+        
+        // Retorna ambos os objetos
+        return { totals, userVotes };
     }
-    // 👆 FIM DO NOVO MÉTODO 👆
+    // 👆 FIM DA ATUALIZAÇÃO 👆
 
 
     // --- MÉTODOS ESTÁTICOS ("Fábricas") ---
@@ -102,19 +118,30 @@ class Profile {
         return result.rows[0].avatar_url;
     }
     
-    // 👇 NOVO MÉTODO (para adicionar um voto) 👇
     static async addRating(fromUser, toUser, ratingType) {
-        // Validação básica
+        const validTypes = ['confiavel', 'legal', 'divertido'];
+        if (!validTypes.includes(ratingType)) {
+            throw new Error('Tipo de avaliação inválido');
+        }
+        await db.query(
+            `INSERT INTO profile_ratings (from_user, to_user, rating_type) 
+             VALUES ($1, $2, $3) 
+             ON CONFLICT (from_user, to_user, rating_type) DO NOTHING`,
+            [fromUser, toUser, ratingType]
+        );
+        return { success: true };
+    }
+    
+    // 👇 NOVO MÉTODO (removeRating) 👇
+    static async removeRating(fromUser, toUser, ratingType) {
         const validTypes = ['confiavel', 'legal', 'divertido'];
         if (!validTypes.includes(ratingType)) {
             throw new Error('Tipo de avaliação inválido');
         }
         
-        // 'ON CONFLICT DO NOTHING' garante que um utilizador só pode votar uma vez
         await db.query(
-            `INSERT INTO profile_ratings (from_user, to_user, rating_type) 
-             VALUES ($1, $2, $3) 
-             ON CONFLICT (from_user, to_user, rating_type) DO NOTHING`,
+            `DELETE FROM profile_ratings 
+             WHERE from_user = $1 AND to_user = $2 AND rating_type = $3`,
             [fromUser, toUser, ratingType]
         );
         return { success: true };

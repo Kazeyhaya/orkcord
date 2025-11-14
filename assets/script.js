@@ -167,14 +167,16 @@ function renderComments(postId, comments) {
 
 async function apiGetProfile(username) { 
   try {
-    const res = await fetch(`/api/profile/${encodeURIComponent(username)}`);
+    // 👇 MUDANÇA: Adiciona o '?viewer=' para sabermos quem está a ver o perfil
+    const res = await fetch(`/api/profile/${encodeURIComponent(username)}?viewer=${encodeURIComponent(currentUser)}`);
+    
     if (!res.ok) {
         throw new Error(`Falha na API: ${res.status}`);
     }
     
     const data = await res.json(); 
     const profileData = data.profile;
-    const ratingsData = data.ratings;
+    const ratingsData = data.ratings; // Isto agora é { totals: {...}, userVotes: [...] }
     
     if (DOM.profileBioEl) {
       DOM.profileBioEl.textContent = profileData.bio;
@@ -183,6 +185,8 @@ async function apiGetProfile(username) {
       DOM.profileMoodEl.textContent = `Mood: ${profileData.mood || "✨"}`;
     }
     renderAvatar(DOM.profileAvatarEl, profileData);
+    
+    // 👇 MUDANÇA: Passa o objeto 'ratings' inteiro
     renderRatings(ratingsData); 
 
     if (username === currentUser) {
@@ -200,63 +204,109 @@ async function apiGetProfile(username) {
   }
 } 
 
+// 👇 FUNÇÃO ATUALIZADA (renderRatings) 👇
 function renderRatings(ratings) {
     if (!DOM.ratingsDisplayContainer) return;
     
+    const totals = ratings.totals; // ex: { confiavel: 1, legal: 0, ... }
+    const userVotes = ratings.userVotes || []; // ex: ['confiavel']
+
     DOM.ratingsDisplayContainer.innerHTML = "";
     
     const items = [
-        { icon: '😊', label: 'Confiável', count: ratings.confiavel },
-        { icon: '🧊', label: 'Legal', count: ratings.legal },
-        { icon: '🥳', label: 'Divertido', count: ratings.divertido }
+        { key: 'confiavel', icon: '😊', label: 'Confiável', count: totals.confiavel },
+        { key: 'legal', icon: '🧊', label: 'Legal', count: totals.legal },
+        { key: 'divertido', icon: '🥳', label: 'Divertido', count: totals.divertido }
     ];
     
+    // 1. Renderiza os totais
     if (items.every(item => item.count === 0)) {
         DOM.ratingsDisplayContainer.innerHTML = "<div class='meta'>Ainda não há avaliações.</div>";
-        return;
+    } else {
+        items.forEach(item => {
+            if (item.count > 0) {
+                const node = document.createElement('div');
+                node.className = 'rating-item';
+                node.innerHTML = `
+                    <span class="rating-icon">${item.icon}</span>
+                    <span class="rating-label">${item.label}</span>
+                    <span class="rating-count">${item.count}</span>
+                `;
+                DOM.ratingsDisplayContainer.appendChild(node);
+            }
+        });
     }
     
-    items.forEach(item => {
-        if (item.count > 0) {
-            const node = document.createElement('div');
-            node.className = 'rating-item';
-            node.innerHTML = `
-                <span class="rating-icon">${item.icon}</span>
-                <span class="rating-label">${item.label}</span>
-                <span class="rating-count">${item.count}</span>
-            `;
-            DOM.ratingsDisplayContainer.appendChild(node);
+    // 2. Atualiza o estilo dos botões de votação
+    DOM.ratingVoteButtons.forEach(button => {
+        const ratingType = button.dataset.rating;
+        // Se o voto do utilizador existe para este tipo, adiciona a classe 'active'
+        if (userVotes.includes(ratingType)) {
+            button.classList.add('active');
+        } else {
+            button.classList.remove('active');
         }
     });
 }
+// 👆 FIM DA ATUALIZAÇÃO 👆
 
+// 👇 FUNÇÃO ATUALIZADA (apiAddRating) 👇
+// (Esta função agora é apenas para ADICIONAR)
 async function apiAddRating(ratingType) {
-  try {
-      const res = await fetch('/api/profile/rate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-              from_user: currentUser,
-              to_user: viewedUsername,
-              rating_type: ratingType
-          })
-      });
-      
-      if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error);
-      }
-      
-      // DOM.ratingsVoteContainer.hidden = true; // <-- LINHA REMOVIDA/COMENTADA
-      
-      // Apenas atualiza o perfil (com os novos votos)
-      apiGetProfile(viewedUsername); 
-      
-  } catch (err) {
-      console.error("Falha ao enviar avaliação:", err);
-      alert(`Erro ao avaliar: ${err.message}`);
-  }
+    try {
+        const res = await fetch('/api/profile/rate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from_user: currentUser,
+                to_user: viewedUsername,
+                rating_type: ratingType
+            })
+        });
+        
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error);
+        }
+        
+        // Atualiza o perfil (com os novos votos)
+        apiGetProfile(viewedUsername); 
+        
+    } catch (err) {
+        console.error("Falha ao enviar avaliação:", err);
+        alert(`Erro ao avaliar: ${err.message}`);
+    }
 }
+// 👆 FIM DA ATUALIZAÇÃO 👆
+
+// 👇 NOVA FUNÇÃO (apiRemoveRating) 👇
+async function apiRemoveRating(ratingType) {
+    try {
+        const res = await fetch('/api/profile/unrate', { // Chama a nova rota
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from_user: currentUser,
+                to_user: viewedUsername,
+                rating_type: ratingType
+            })
+        });
+        
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error);
+        }
+        
+        // Atualiza o perfil (com os votos removidos)
+        apiGetProfile(viewedUsername); 
+        
+    } catch (err) {
+        console.error("Falha ao remover avaliação:", err);
+        alert(`Erro ao remover avaliação: ${err.message}`);
+    }
+}
+// 👆 FIM DA NOVA FUNÇÃO 👆
+
 
 async function apiUpdateMood() {
   const currentMood = DOM.userbarMood.textContent;
@@ -778,6 +828,9 @@ async function showDynamicProfile(username) {
   DOM.friendsContainer.innerHTML = "<div class='meta'>Carregando amigos...</div>";
   renderAvatar(DOM.profileAvatarEl, { user: username, avatar_url: null });
   
+  // Limpa os estilos dos botões de voto
+  DOM.ratingVoteButtons.forEach(button => button.classList.remove('active'));
+  
   DOM.profileAvatarEl.classList.remove('is-owner');
   DOM.avatarUploadLabel.style.display = 'none';
   DOM.editBioBtn.disabled = true;
@@ -1030,12 +1083,22 @@ function bindAppEvents() {
         });
     });
     
+    // 👇 EVENT LISTENER ATUALIZADO (para os botões de votação) 👇
     DOM.ratingVoteButtons.forEach(button => {
         button.addEventListener("click", () => {
             const ratingType = button.dataset.rating;
-            apiAddRating(ratingType);
+            
+            // Verifica se o botão já está ativo
+            if (button.classList.contains('active')) {
+                // Se está ativo, remove o voto
+                apiRemoveRating(ratingType);
+            } else {
+                // Se não está ativo, adiciona o voto
+                apiAddRating(ratingType);
+            }
         });
     });
+    // 👆 FIM DA ATUALIZAÇÃO 👆
 }
 
 function startApp() {

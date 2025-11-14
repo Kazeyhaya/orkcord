@@ -607,4 +607,11 @@ a{color:inherit;text-decoration:none}
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* ESTILO DO BOTÃO ATIVO */
+#ratings-vote-container .mini-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
 /* 👆 FIM DOS NOVOS ESTILOS 👆 */

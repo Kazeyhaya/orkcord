@@ -5,10 +5,12 @@ const Profile = require('../models/profile.class');
 const getProfileBio = async (req, res) => {
     try {
         const { username } = req.params;
+        const { viewer } = req.query; // Pega o utilizador que está a ver (query param)
+        
         const profile = await Profile.findByUser(username);
         
-        // 👇 MUDANÇA: Busca também as avaliações 👇
-        const ratings = await profile.getRatings();
+        // 👇 MUDANÇA: Passa o 'viewer' para o getRatings 👇
+        const ratings = await profile.getRatings(viewer); 
         
         // Envia ambos os objetos
         res.json({ profile, ratings }); 
@@ -84,7 +86,6 @@ const updateUserAvatar = async (req, res) => {
     }
 };
 
-// 👇 NOVO CONTROLADOR (para adicionar um voto) 👇
 // [POST] /api/profile/rate
 const addProfileRating = async (req, res) => {
     try {
@@ -102,6 +103,25 @@ const addProfileRating = async (req, res) => {
 
     } catch (err) {
         console.error("Erro no controlador addProfileRating:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// 👇 NOVO CONTROLADOR (para remover um voto) 👇
+// [POST] /api/profile/unrate
+const removeProfileRating = async (req, res) => {
+    try {
+        const { from_user, to_user, rating_type } = req.body;
+        
+        if (!from_user || !to_user || !rating_type) {
+             return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
+        }
+        
+        await Profile.removeRating(from_user, to_user, rating_type);
+        res.status(200).json({ success: true });
+
+    } catch (err) {
+        console.error("Erro no controlador removeProfileRating:", err);
         res.status(500).json({ error: err.message });
     }
 };
@@ -169,7 +189,8 @@ module.exports = {
   updateProfileBio,
   updateUserMood,
   updateUserAvatar,
-  addProfileRating, // Exporta o novo controlador
+  addProfileRating,
+  removeProfileRating, // Exporta o novo controlador
   getFollowingList,
   getIsFollowing,
   addFollow,
