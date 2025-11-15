@@ -98,11 +98,15 @@ function renderExplorePosts(posts) {
   renderPostList(DOM.explorePostsEl, posts);
 }
 
+// 👇 FUNÇÃO MODIFICADA (renderPostList) 👇
 function renderPostList(containerElement, posts) {
   containerElement.innerHTML = ""; 
   posts.forEach(post => {
     const node = document.createElement("div");
     node.className = "post";
+    // Adiciona IDs ao nó principal para referência
+    node.dataset.user = post.user;
+    node.dataset.postid = post.id;
     
     const avatarEl = document.createElement('div');
     avatarEl.className = 'avatar-display post-avatar';
@@ -110,11 +114,21 @@ function renderPostList(containerElement, posts) {
 
     const postTime = new Date(post.timestamp).toLocaleString('pt-BR');
     
+    // Mostra o botão de editar apenas se o post for do utilizador atual
+    const editButton = (post.user === currentUser) 
+      ? `<button class="mini-btn" data-edit-post="${post.id}">Editar</button>` 
+      : '';
+    
     const postContent = document.createElement('div');
+    // Adiciona um ID ao texto do post para o podermos encontrar
     postContent.innerHTML = `
       <div class="meta"><strong class="post-username" data-username="${escapeHtml(post.user)}">${escapeHtml(post.user)}</strong> • ${postTime}</div>
-      <div>${escapeHtml(post.text)}</div>
-      <div class="post-actions"><button class="mini-btn" data-like="${post.id}">❤ ${post.likes || 0}</button><button class="mini-btn" data-comment="${post.id}">Comentar</button></div>
+      <div id="post-text-${post.id}">${escapeHtml(post.text)}</div>
+      <div class="post-actions">
+        <button class="mini-btn" data-like="${post.id}">❤ ${post.likes || 0}</button>
+        <button class="mini-btn" data-comment="${post.id}">Comentar</button>
+        ${editButton}
+      </div>
       <div class="comments" id="comments-for-${post.id}"></div>
     `;
     
@@ -125,6 +139,7 @@ function renderPostList(containerElement, posts) {
     apiGetComments(post.id);
   });
 }
+// 👆 FIM DA MODIFICAÇÃO 👆
 
 async function apiGetComments(postId) {
   try {
@@ -155,6 +170,47 @@ async function apiCreateComment(postId) {
     }
   });
 }
+
+// 👇 NOVA FUNÇÃO (apiEditPost) 👇
+async function apiEditPost(postId) {
+    // 1. Encontra o texto atual no DOM
+    const textElement = document.getElementById(`post-text-${postId}`);
+    if (!textElement) return;
+    
+    const currentText = textElement.textContent;
+
+    // 2. Abre o modal
+    openInputModal({
+        title: "Editar Publicação",
+        initialValue: currentText,
+        onSave: async (newText) => {
+            try {
+                // 3. Envia a atualização para a API
+                const res = await fetch(`/api/posts/${postId}/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user: currentUser, // Envia o utilizador para verificação de dono
+                        text: newText
+                    })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error);
+                }
+                
+                // 4. Atualiza o texto no DOM (localmente)
+                textElement.textContent = newText;
+
+            } catch (err) {
+                console.error("Falha ao editar post:", err);
+                alert(`Erro ao salvar: ${err.message}`);
+            }
+        }
+    });
+}
+// 👆 FIM DA NOVA FUNÇÃO 👆
 
 function renderComments(postId, comments) {
   const container = document.getElementById(`comments-for-${postId}`);
@@ -627,7 +683,6 @@ function renderCommunityDetails(community) {
     }
     
     if (DOM.btnEditCommunity) {
-        // Mostra o botão APENAS SE o user atual for o dono
         if (community.owner_user === currentUser) {
             DOM.btnEditCommunity.hidden = false;
         } else {
@@ -798,25 +853,51 @@ socket.on('newMessage', (data) => {
 // ===================================================
 // 4. EVENTOS (Conexões dos Botões)
 // ===================================================
+
+// 👇 FUNÇÃO MODIFICADA (handlePostClick) 👇
 function handlePostClick(e) {
+  // Clique no nome de utilizador
   const userLink = e.target.closest('.post-username[data-username]');
-  if (userLink) { viewedUsername = userLink.dataset.username; activateView("profile"); return; }
+  if (userLink) { 
+    viewedUsername = userLink.dataset.username; 
+    activateView("profile"); 
+    return; 
+  }
   
+  // Clique no botão Like
   const likeButton = e.target.closest('[data-like]');
   if (likeButton) {
     const postId = likeButton.dataset.like; 
     let currentLikes = parseInt(likeButton.textContent.trim().split(' ')[1]);
-    if (likeButton.classList.contains('liked')) { apiUnlikePost(postId); likeButton.classList.remove('liked'); likeButton.innerHTML = `❤ ${currentLikes - 1}`; } else { apiLikePost(postId); likeButton.classList.add('liked'); likeButton.innerHTML = `❤ ${currentLikes + 1}`; }
+    if (likeButton.classList.contains('liked')) { 
+      apiUnlikePost(postId); 
+      likeButton.classList.remove('liked'); 
+      likeButton.innerHTML = `❤ ${currentLikes - 1}`; 
+    } else { 
+      apiLikePost(postId); 
+      likeButton.classList.add('liked'); 
+      likeButton.innerHTML = `❤ ${currentLikes + 1}`; 
+    }
     return;
   }
   
+  // Clique no botão Comentar
   const commentButton = e.target.closest('[data-comment]');
   if (commentButton) {
     const postId = commentButton.dataset.comment;
     apiCreateComment(postId);
     return;
   }
+  
+  // Clique no botão Editar Post
+  const editButton = e.target.closest('[data-edit-post]');
+  if (editButton) {
+      const postId = editButton.dataset.editPost;
+      apiEditPost(postId);
+      return;
+  }
 }
+// 👆 FIM DA MODIFICAÇÃO 👆
 
 // ===================================================
 // 5. LÓGICA DE TROCA DE VISÃO (Views)
@@ -1210,12 +1291,11 @@ function bindAppEvents() {
     // 👇 EVENT LISTENER ATUALIZADO (para o botão de editar) 👇
     DOM.btnEditCommunity.addEventListener("click", () => {
         const currentName = DOM.communityNameChannel.textContent;
-        // Pega o emoji (que não tem a tag de 'escapeHtml')
         const currentEmoji = DOM.communityAvatarChannel.textContent; 
 
         openInputModal({
             title: "Editar Nome da Comunidade",
-            initialValue: currentName, // TODO: Adicionar emoji ao modal
+            initialValue: currentName,
             onSave: async (newName) => {
                 try {
                     const res = await fetch(`/api/community/${currentCommunityId}/update`, {
@@ -1223,7 +1303,7 @@ function bindAppEvents() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             name: newName,
-                            emoji: currentEmoji, // TODO: Permitir editar o emoji
+                            emoji: currentEmoji, // (Ainda não estamos a editar o emoji, mas enviamos o antigo)
                             user: currentUser 
                         })
                     });
@@ -1234,13 +1314,11 @@ function bindAppEvents() {
                     }
                     
                     const data = await res.json();
-                    // Atualiza a barra lateral com os novos dados
                     renderCommunityDetails(data.community); 
 
                 } catch (err) {
                     console.error("Falha ao atualizar comunidade:", err);
                     alert(`Erro ao salvar: ${err.message}`);
-                    // Recarrega os dados antigos em caso de falha
                     apiGetCommunityDetails(currentCommunityId);
                 }
             }

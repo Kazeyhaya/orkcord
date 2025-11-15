@@ -12,13 +12,17 @@ router.get('/explore', postController.getExplore);
 // Rota para Criar Post (POST /api/posts)
 router.post('/', postController.createNewPost);
 
+// 👇 NOVA ROTA DE ATUALIZAÇÃO (EDITAR) 👇
+// [POST] /api/posts/:id/update
+router.post('/:id/update', postController.updatePost);
+
 // Rota para Like (POST /api/posts/:id/like)
 router.post('/:id/like', postController.addLike);
 
 // Rota para Unlike (POST /api/posts/:id/unlike)
 router.post('/:id/unlike', postController.removeLike);
 
-// --- NOVAS ROTAS DE COMENTÁRIOS ---
+// --- ROTAS DE COMENTÁRIOS ---
 
 // Rota para buscar comentários (GET /api/posts/:id/comments)
 router.get('/:id/comments', postController.getPostComments);
