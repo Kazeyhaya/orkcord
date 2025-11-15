@@ -547,7 +547,6 @@ function renderFollowing(followingList) {
   });
 }
 
-// 👇 NOVA FUNÇÃO (apiGetCommunityMembers) 👇
 async function apiGetCommunityMembers(communityId) {
   try {
     const res = await fetch(`/api/community/${communityId}/members`);
@@ -561,18 +560,25 @@ async function apiGetCommunityMembers(communityId) {
     if (DOM.communityMemberList) DOM.communityMemberList.innerHTML = "<div class='meta'>Falha ao carregar membros.</div>"; 
   }
 }
-// 👆 FIM DA NOVA FUNÇÃO 👆
 
-// 👇 NOVA FUNÇÃO (renderCommunityMembers) 👇
+// 👇 FUNÇÃO MODIFICADA (renderCommunityMembers) 👇
 function renderCommunityMembers(members) {
   if (!DOM.communityMemberList) return;
   DOM.communityMemberList.innerHTML = ""; 
   
+  const count = members.length;
+  
+  // Atualiza o título principal (Ex: Membros da Comunidade (1))
   if (DOM.communityMembersTitle) {
-      DOM.communityMembersTitle.textContent = `Membros da Comunidade (${members.length})`;
+      DOM.communityMembersTitle.textContent = `Membros da Comunidade (${count})`;
   }
   
-  if (members.length === 0) { 
+  // ATUALIZA O CONTADOR NA BARRA LATERAL (Ex: 1 membro)
+  if (DOM.communityMembersCountEl) {
+      DOM.communityMembersCountEl.textContent = `${count} membro${count !== 1 ? 's' : ''}`;
+  }
+  
+  if (count === 0) { 
     DOM.communityMemberList.innerHTML = "<div class='meta'>Nenhum membro encontrado.</div>"; 
     return; 
   }
@@ -587,10 +593,10 @@ function renderCommunityMembers(members) {
     avatarEl.style.height = '32px';
     avatarEl.style.borderRadius = '8px';
     avatarEl.style.fontSize = '0.9rem';
-    renderAvatar(avatarEl, member); // 'member' já tem { user: '...', avatar_url: '...' }
+    renderAvatar(avatarEl, member); 
     
     const nameEl = document.createElement('strong');
-    nameEl.className = 'friend-card-name'; // Permite o clique
+    nameEl.className = 'friend-card-name'; 
     nameEl.dataset.username = member.user;
     nameEl.textContent = escapeHtml(member.user);
 
@@ -600,7 +606,7 @@ function renderCommunityMembers(members) {
     DOM.communityMemberList.appendChild(node);
   });
 }
-// 👆 FIM DA NOVA FUNÇÃO 👆
+// 👆 FIM DA MODIFICAÇÃO 👆
 
 
 async function apiJoinCommunity(communityId, button) {
@@ -850,8 +856,7 @@ function activateCommunityView(name, options = {}) {
         apiGetCommunityPosts(currentCommunityId); 
     } else if (name === "members") {
         DOM.communityMembersView.hidden = false; 
-        // 👇 LINHA ADICIONADA 👇
-        apiGetCommunityMembers(currentCommunityId); // Busca os membros quando a aba é clicada
+        apiGetCommunityMembers(currentCommunityId); 
     }
 }
 
@@ -1020,7 +1025,6 @@ function mapAppDOM() {
     DOM.communityAvatarChannelEl = document.getElementById('community-avatar-channel');
     DOM.communityMembersCountEl = document.getElementById('community-members-count');
     
-    // 👇 ADICIONADO PARA OS MEMBROS 👇
     DOM.communityMemberList = document.getElementById("community-member-list");
     DOM.communityMembersTitle = document.getElementById("community-members-title");
 
@@ -1092,7 +1096,6 @@ function bindAppEvents() {
       if (friendLink) { viewedUsername = friendLink.dataset.username; activateView("profile"); }
     });
     
-    // 👇 ADICIONADO PARA OS MEMBROS (clicar no nome) 👇
     if (DOM.communityMemberList) {
         DOM.communityMemberList.addEventListener("click", (e) => {
           const memberLink = e.target.closest('.friend-card-name[data-username]');
