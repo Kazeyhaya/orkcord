@@ -561,19 +561,17 @@ async function apiGetCommunityMembers(communityId) {
   }
 }
 
-// 👇 FUNÇÃO MODIFICADA (renderCommunityMembers) 👇
 function renderCommunityMembers(members) {
   if (!DOM.communityMemberList) return;
   DOM.communityMemberList.innerHTML = ""; 
   
   const count = members.length;
   
-  // Atualiza o título principal (Ex: Membros da Comunidade (1))
   if (DOM.communityMembersTitle) {
       DOM.communityMembersTitle.textContent = `Membros da Comunidade (${count})`;
   }
   
-  // ATUALIZA O CONTADOR NA BARRA LATERAL (Ex: 1 membro)
+  // 👇 CORREÇÃO AQUI 👇
   if (DOM.communityMembersCountEl) {
       DOM.communityMembersCountEl.textContent = `${count} membro${count !== 1 ? 's' : ''}`;
   }
@@ -585,7 +583,7 @@ function renderCommunityMembers(members) {
   
   members.forEach(member => {
     const node = document.createElement("div");
-    node.className = "friend-card"; // Reutiliza o estilo dos "amigos"
+    node.className = "friend-card"; 
     
     const avatarEl = document.createElement('div');
     avatarEl.className = 'avatar-display';
@@ -606,7 +604,6 @@ function renderCommunityMembers(members) {
     DOM.communityMemberList.appendChild(node);
   });
 }
-// 👆 FIM DA MODIFICAÇÃO 👆
 
 
 async function apiJoinCommunity(communityId, button) {
@@ -827,6 +824,8 @@ function activateView(name, options = {}) {
     
   } 
 }
+
+// 👇 FUNÇÃO MODIFICADA (activateCommunityView) 👇
 function activateCommunityView(name, options = {}) {
     Object.values(DOM.views).forEach(view => view.hidden = true);
     DOM.appEl.classList.remove("view-home");
@@ -856,9 +855,12 @@ function activateCommunityView(name, options = {}) {
         apiGetCommunityPosts(currentCommunityId); 
     } else if (name === "members") {
         DOM.communityMembersView.hidden = false; 
-        apiGetCommunityMembers(currentCommunityId); 
     }
+
+    // Chama SEMPRE a função de membros para atualizar o contador da barra lateral
+    apiGetCommunityMembers(currentCommunityId);
 }
+// 👆 FIM DA MODIFICAÇÃO 👆
 
 // ===================================================
 // 6. LÓGICA DE PERFIL DINÂMICO E SEGUIR

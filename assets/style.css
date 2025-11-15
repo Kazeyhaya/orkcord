@@ -23,7 +23,7 @@ body{
             radial-gradient(1200px 500px at 110% -10%, rgba(77,163,255,.14), transparent 42%),
             linear-gradient(180deg, #181a1f, #111111 60%);
   color: var(--text-primary);
-  height:100dvh;
+  height:100dvh; 
   overflow:hidden;
 }
 a{color:inherit;text-decoration:none}
@@ -31,7 +31,7 @@ a{color:inherit;text-decoration:none}
 /* Layout base */
 .app{
   display:grid;
-  height:100dvh;
+  height:100dvh; 
   gap:12px;
   padding:12px;
 }
@@ -73,7 +73,7 @@ a{color:inherit;text-decoration:none}
 /* Servers rail */
 #home-btn {
     background: #1e1f22;
-    /* padding: 8px; */ /* Removido para o ícone encaixar */
+    /* padding: 8px; <-- Removido para o ícone encaixar */ 
 }
 #home-btn:hover {
     border-radius: 50%; 
@@ -225,7 +225,8 @@ a{color:inherit;text-decoration:none}
   color: var(--orkut-blue);
 }
 .chat-top{display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.06);background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);border-top-left-radius: var(--radius);border-top-right-radius: var(--radius); min-height: 56px;}
-.chat-topic{display:flex;align-items:center;gap:10px;min-width:0}
+.chat-topic{display:flex;align-items:center;gap:10px;min-width:0} /* <-- CORREÇÃO AQUI (min-width:0) */
+/* 👇 CORREÇÃO ADICIONADA 👇 */
 .chat-topic .meta {
   white-space: nowrap;
   overflow: hidden;
@@ -631,8 +632,6 @@ a{color:inherit;text-decoration:none}
     display: none; 
   }
   
-  /* 👇 CORREÇÃO DO BOTÃO "NOVO TÓPICO" 👇 */
-  /* Esta regra estava a esconder o botão, agora é mais específica */
   .header > .header-actions {
     display: none;
   }
