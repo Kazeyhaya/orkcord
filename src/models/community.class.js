@@ -3,19 +3,17 @@ const db = require('./db');
 
 class Community {
     
-    // Adicionado 'owner_user'
     constructor({ id, name, description, emoji, members, owner_user }) {
         this.id = id;
         this.name = name;
         this.description = description || "Bem-vindo a esta comunidade!";
         this.emoji = emoji || '💬';
         this.members = members || 0;
-        this.owner_user = owner_user || null; // O dono da comunidade
+        this.owner_user = owner_user || null; 
     }
 
     // --- MÉTODOS DE INSTÂNCIA ---
 
-    // Adicionado 'owner_user'
     async save() {
         const result = await db.query(
             'INSERT INTO communities (name, emoji, description, members, owner_user) VALUES ($1, $2, $3, $4, $5) RETURNING *',
@@ -47,6 +45,24 @@ class Community {
         return result.rows;
     }
 
+    // 👇 NOVO MÉTODO ADICIONADO 👇
+    async getMembers() {
+        const result = await db.query(
+            `SELECT cm.user_name, p.avatar_url
+             FROM community_members cm
+             LEFT JOIN profiles p ON cm.user_name = p."user"
+             WHERE cm.community_id = $1
+             ORDER BY cm.timestamp ASC`,
+            [this.id]
+        );
+        // Renomeia 'user_name' para 'user' para consistência
+        return result.rows.map(row => ({
+            user: row.user_name,
+            avatar_url: row.avatar_url
+        }));
+    }
+    // 👆 FIM DO NOVO MÉTODO 👆
+
     // --- MÉTODOS ESTÁTICOS ("Fábricas") ---
 
     static async findById(id) {
@@ -74,20 +90,15 @@ class Community {
         return result.rows.map(row => new Community(row));
     }
     
-    // (Este método era 'createCommunity' no modelo antigo, agora está na Classe)
     static async create(name, emoji, creator) {
-        // 1. Criar a comunidade
         const community = new Community({
             name: name,
             emoji: emoji || '💬',
             members: 1,
-            owner_user: creator // Define o criador como o dono
+            owner_user: creator
         });
-        await community.save(); // Salva e obtém o ID
-        
-        // 2. Adicionar o criador como primeiro membro
+        await community.save();
         await community.addMember(creator);
-        
         return community;
     }
 }
