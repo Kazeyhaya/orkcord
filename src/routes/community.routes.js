@@ -14,9 +14,11 @@ const communityRouter = express.Router();
 communityRouter.post('/join', communityController.join);
 communityRouter.get('/:id/posts', communityController.getPosts);
 communityRouter.get('/:id/members', communityController.getMembers);
-
-// 👇 NOVA ROTA ADICIONADA 👇
 communityRouter.get('/:id/details', communityController.getDetails);
+communityRouter.post('/:id/update', communityController.updateDetails); // Rota de Edição (da msg anterior)
+
+// 👇 NOVA ROTA ADICIONADA (POST para criar tópico) 👇
+communityRouter.post('/posts', communityController.createCommunityPost);
 
 
 // Exportamos os dois routers

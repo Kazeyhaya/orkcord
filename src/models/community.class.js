@@ -13,9 +13,7 @@ class Community {
     }
 
     // --- MÉTODOS DE INSTÂNCIA ---
-
     async save() {
-        // Se não tem ID, é novo (INSERT)
         if (!this.id) {
             const result = await db.query(
                 'INSERT INTO communities (name, emoji, description, members, owner_user) VALUES ($1, $2, $3, $4, $5) RETURNING *',
@@ -23,7 +21,6 @@ class Community {
             );
             this.id = result.rows[0].id;
         } else {
-            // Se tem ID, é atualização (UPDATE)
              await db.query(
                 'UPDATE communities SET name = $1, emoji = $2, description = $3 WHERE id = $4',
                 [this.name, this.emoji, this.description, this.id]
@@ -108,13 +105,23 @@ class Community {
         return community;
     }
     
-    // 👇 NOVO MÉTODO ESTÁTICO ADICIONADO 👇
     static async updateDetails(communityId, newName, newEmoji) {
         const result = await db.query(
             'UPDATE communities SET name = $1, emoji = $2 WHERE id = $3 RETURNING *',
             [newName, newEmoji, communityId]
         );
         return new Community(result.rows[0]);
+    }
+    
+    // 👇 NOVO MÉTODO ESTÁTICO ADICIONADO 👇
+    static async createPost(communityId, user, title, content) {
+        const result = await db.query(
+            `INSERT INTO community_posts (community_id, "user", title, content) 
+             VALUES ($1, $2, $3, $4) 
+             RETURNING *`,
+            [communityId, user, title, content]
+        );
+        return result.rows[0];
     }
     // 👆 FIM DO NOVO MÉTODO 👆
 }

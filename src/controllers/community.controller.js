@@ -1,7 +1,7 @@
 // src/controllers/community.controller.js
 const Community = require('../models/community.class');
 
-// ... (getJoined, getExplore, join, create, getPosts, getMembers... continuam iguais) ...
+// ... (getJoined, getExplore, join, create, getPosts, getMembers, getDetails, updateDetails... continuam iguais) ...
 // [GET] /api/communities/joined
 const getJoined = async (req, res) => {
     try {
@@ -129,36 +129,61 @@ const getDetails = async (req, res) => {
     }
 };
 
-// 👇 NOVO CONTROLADOR ADICIONADO 👇
 // [POST] /api/community/:id/update
 const updateDetails = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, emoji, user } = req.body; // 'user' é quem está a tentar editar
+        const { name, emoji, user } = req.body; 
 
-        // Validação
         if (!name || !user) {
             return res.status(400).json({ error: 'Nome e utilizador são obrigatórios' });
         }
 
-        // 1. Encontra a comunidade
         const community = await Community.findById(id);
         if (!community) {
             return res.status(404).json({ error: 'Comunidade não encontrada' });
         }
 
-        // 2. Verifica se o utilizador é o dono
         if (community.owner_user !== user) {
             return res.status(403).json({ error: 'Apenas o dono pode editar a comunidade.' });
         }
         
-        // 3. Atualiza na base de dados
         const updatedCommunity = await Community.updateDetails(id, name, emoji || '💬');
         
         res.json({ community: updatedCommunity });
     } catch (err) {
         console.error("Erro no controlador updateDetails:", err);
         res.status(500).json({ error: 'Erro ao atualizar comunidade' });
+    }
+};
+
+// 👇 NOVO CONTROLADOR ADICIONADO 👇
+// [POST] /api/community/posts (Criar Tópico)
+const createCommunityPost = async (req, res) => {
+    try {
+        const { community_id, user, title, content } = req.body;
+
+        // Validação
+        if (!community_id || !user || !title || !content) {
+            return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
+        }
+        if (title.length > 100) {
+            return res.status(400).json({ error: 'O título não pode exceder 100 caracteres.' });
+        }
+
+        // 1. Verifica se a comunidade existe
+        const community = await Community.findById(community_id);
+        if (!community) {
+            return res.status(404).json({ error: 'Comunidade não encontrada' });
+        }
+
+        // 2. Cria o post
+        const newPost = await Community.createPost(community_id, user, title, content);
+        
+        res.status(201).json({ post: newPost });
+    } catch (err) {
+        console.error("Erro no controlador createCommunityPost:", err);
+        res.status(500).json({ error: 'Erro ao criar tópico na comunidade' });
     }
 };
 // 👆 FIM DO NOVO CONTROLADOR 👆
@@ -172,5 +197,6 @@ module.exports = {
   getPosts,
   getMembers,
   getDetails,
-  updateDetails // <-- Exporta o novo controlador
+  updateDetails,
+  createCommunityPost // <-- Exporta o novo controlador
 };
