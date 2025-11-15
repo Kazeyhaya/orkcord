@@ -605,6 +605,17 @@ a{color:inherit;text-decoration:none}
   margin-right: 5px;
 }
 
+/* 👇 NOVO BOTÃO DE MENU PARA COMUNIDADE (ESCONDIDO NO PC) 👇 */
+#btn-community-menu {
+  display: none;
+  border: none;
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+  width: 44px;
+  height: 44px;
+}
+
+
 @media (max-width: 1080px){
   .app.view-community {
     grid-template-columns:72px 1fr;
@@ -618,7 +629,7 @@ a{color:inherit;text-decoration:none}
   }
 }
 
-/* Tablet (720px) - Mantém botões, esconde título */
+/* Tablet (720px) - Esconde título, mas MOSTRA botões */
 @media (max-width: 720px){
   .app.view-community {
     grid-template-columns:64px 1fr;
@@ -635,9 +646,7 @@ a{color:inherit;text-decoration:none}
     display: none; 
   }
   
-  .header > .header-actions {
-    display: none;
-  }
+  /* A regra .header > .header-actions { display: none; } foi REMOVIDA */
 }
 
 /* Smartphone (640px) - Lógica do Menu Hamburger */
@@ -649,7 +658,12 @@ a{color:inherit;text-decoration:none}
   }
   
   #btn-mobile-menu {
-    display: grid; 
+    display: grid; /* Mostra o botão ☰ do HEADER */
+  }
+  
+  /* Mostra o botão ☰ da BARRA DE CANAL (só na vista de comunidade) */
+  .app.view-community #btn-community-menu {
+    display: grid;
   }
 
   .servers {

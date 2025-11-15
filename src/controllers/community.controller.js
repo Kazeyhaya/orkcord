@@ -94,7 +94,6 @@ const getPosts = async (req, res) => {
     }
 };
 
-// 👇 A FUNÇÃO QUE PROVAVELMENTE ESTÁ EM FALTA NO SEU SERVIDOR 👇
 // [GET] /api/community/:id/members
 const getMembers = async (req, res) => {
     try {
@@ -113,6 +112,23 @@ const getMembers = async (req, res) => {
         res.status(500).json({ error: 'Erro ao buscar membros da comunidade' });
     }
 };
+
+// 👇 NOVO CONTROLADOR ADICIONADO 👇
+// [GET] /api/community/:id/details
+const getDetails = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const community = await Community.findById(id);
+        if (!community) {
+            return res.status(404).json({ error: 'Comunidade não encontrada' });
+        }
+        // O método findById já retorna um objeto Community
+        res.json({ community }); 
+    } catch (err) {
+        console.error("Erro no controlador getDetails:", err);
+        res.status(500).json({ error: 'Erro ao buscar detalhes da comunidade' });
+    }
+};
 // 👆 FIM DO NOVO CONTROLADOR 👆
 
 
@@ -122,5 +138,6 @@ module.exports = {
   join,
   create,
   getPosts,
-  getMembers // <-- A EXPORTAÇÃO QUE PROVAVELMENTE ESTÁ EM FALTA
+  getMembers,
+  getDetails // <-- Exporta o novo controlador
 };

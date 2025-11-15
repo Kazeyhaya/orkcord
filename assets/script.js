@@ -571,7 +571,6 @@ function renderCommunityMembers(members) {
       DOM.communityMembersTitle.textContent = `Membros da Comunidade (${count})`;
   }
   
-  // 👇 CORREÇÃO AQUI 👇
   if (DOM.communityMembersCountEl) {
       DOM.communityMembersCountEl.textContent = `${count} membro${count !== 1 ? 's' : ''}`;
   }
@@ -603,6 +602,29 @@ function renderCommunityMembers(members) {
     
     DOM.communityMemberList.appendChild(node);
   });
+}
+
+async function apiGetCommunityDetails(communityId) {
+  try {
+    const res = await fetch(`/api/community/${communityId}/details`);
+    if (!res.ok) {
+        throw new Error(`Falha na API: ${res.status}`);
+    }
+    const data = await res.json();
+    renderCommunityDetails(data.community);
+  } catch (err) { 
+    console.error("Erro ao buscar detalhes da comunidade:", err); 
+  }
+}
+
+function renderCommunityDetails(community) {
+    if (DOM.communityNameChannel) {
+        DOM.communityNameChannel.textContent = escapeHtml(community.name);
+    }
+    if (DOM.communityAvatarChannel) {
+        renderAvatar(DOM.communityAvatarChannel, { user: community.emoji, avatar_url: null });
+        DOM.communityAvatarChannel.textContent = escapeHtml(community.emoji);
+    }
 }
 
 
@@ -825,7 +847,6 @@ function activateView(name, options = {}) {
   } 
 }
 
-// 👇 FUNÇÃO MODIFICADA (activateCommunityView) 👇
 function activateCommunityView(name, options = {}) {
     Object.values(DOM.views).forEach(view => view.hidden = true);
     DOM.appEl.classList.remove("view-home");
@@ -850,17 +871,17 @@ function activateCommunityView(name, options = {}) {
     DOM.communityMembersView.hidden = true;
     DOM.chatView.hidden = true;
     
+    // 👇 CORREÇÃO AQUI (para o contador "0 membros") 👇
+    apiGetCommunityDetails(currentCommunityId); 
+    apiGetCommunityMembers(currentCommunityId);
+    
     if (name === "topics") {
         DOM.communityTopicView.hidden = false; 
         apiGetCommunityPosts(currentCommunityId); 
     } else if (name === "members") {
         DOM.communityMembersView.hidden = false; 
     }
-
-    // Chama SEMPRE a função de membros para atualizar o contador da barra lateral
-    apiGetCommunityMembers(currentCommunityId);
 }
-// 👆 FIM DA MODIFICAÇÃO 👆
 
 // ===================================================
 // 6. LÓGICA DE PERFIL DINÂMICO E SEGUIR
@@ -1030,6 +1051,9 @@ function mapAppDOM() {
     DOM.communityMemberList = document.getElementById("community-member-list");
     DOM.communityMembersTitle = document.getElementById("community-members-title");
 
+    DOM.communityNameChannel = document.getElementById("community-name-channel");
+    DOM.communityAvatarChannel = document.getElementById("community-avatar-channel");
+
     DOM.btnNewTopic = document.getElementById("btn-new-topic");
     DOM.createTopicView = document.getElementById("view-create-topic");
     DOM.createTopicForm = document.getElementById("create-topic-form");
@@ -1063,6 +1087,7 @@ function mapAppDOM() {
 
     DOM.btnMobileMenu = document.getElementById("btn-mobile-menu");
     DOM.serversList = document.querySelector(".servers");
+    DOM.btnCommunityMenu = document.getElementById("btn-community-menu"); // <-- Botão 2
 }
 
 function bindAppEvents() {
@@ -1158,9 +1183,13 @@ function bindAppEvents() {
         });
     });
 
-    DOM.btnMobileMenu.addEventListener("click", () => {
+    // 👇 EVENT LISTENERS PARA OS DOIS BOTÕES DE MENU 👇
+    const toggleServersMenu = () => {
         DOM.serversList.classList.toggle("is-open");
-    });
+    };
+    
+    DOM.btnMobileMenu.addEventListener("click", toggleServersMenu);
+    DOM.btnCommunityMenu.addEventListener("click", toggleServersMenu);
 
     DOM.serversList.addEventListener("click", (e) => {
         if (window.innerWidth <= 640 && DOM.serversList.classList.contains("is-open")) {
