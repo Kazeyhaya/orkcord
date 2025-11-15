@@ -158,31 +158,41 @@ a{color:inherit;text-decoration:none}
 .chat{background: var(--discord-dark);border:1px solid rgba(255,255,255,.06);border-radius: var(--radius);display:grid;grid-template-rows: 56px 1fr 74px;box-shadow: var(--shadow)}
 
 /* 👇 --- CORREÇÃO AQUI --- 👇 */
-/* Regra .feed (Feed Principal) */
-.feed {
+/* Regras de layout de conteúdo base */
+.feed, .community-content, .profile, .explore-servers, .create-community, .create-topic {
   background: var(--discord-dark);
   border:1px solid rgba(255,255,255,.06);
   border-radius: var(--radius);
-  display:grid;
-  grid-template-rows: 56px auto 1fr; /* 3 Linhas: Topo, Compositor, Posts */
   box-shadow: var(--shadow);
-  min-height: 0; 
+  display: grid;
+  min-height: 0;
 }
-/* Regra .community-content (Tópicos da Comunidade) */
-.community-content {
-  background: var(--discord-dark);
-  border:1px solid rgba(255,255,255,.06);
-  border-radius: var(--radius);
-  display:grid;
-  grid-template-rows: 56px 1fr; /* 2 Linhas: Topo, Posts */
-  box-shadow: var(--shadow);
-  min-height: 0; 
+
+/* Layout para o Feed Principal (3 linhas) */
+#view-feed {
+  grid-template-rows: 56px auto 1fr; /* Topo, Compositor, Posts */
+}
+
+/* Layout para Tópicos, Explorar, Membros (2 linhas) */
+#view-community-topics,
+#view-explore,
+#view-community-members {
+  grid-template-rows: 56px 1fr; /* Topo, Lista */
+}
+
+/* Layout para Perfil (2 linhas) */
+#view-profile {
+  grid-template-rows: 56px 1fr; /* Topo, Corpo */
+}
+
+/* Layout para Criar Tópico/Comunidade (2 linhas) */
+#view-create-community,
+#view-create-topic {
+  grid-template-rows: auto 1fr; /* Topo (auto), Formulário */
 }
 /* 👆 --- FIM DA CORREÇÃO --- 👆 */
 
-#view-explore.feed {
-  grid-template-rows: 56px 1fr; 
-}
+
 .feed-top{display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.06);background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);border-top-left-radius: var(--radius);border-top-right-radius: var(--radius); min-height: 56px;}
 .composer-feed{display:flex;gap:10px;padding:12px;border-bottom:1px solid rgba(255,255,255,.06)}
 .composer-feed .input{min-height:44px}
@@ -202,16 +212,8 @@ a{color:inherit;text-decoration:none}
 .mini-btn:hover{background:rgba(255,255,255,.1)}
 .mini-btn.liked{ background: var(--orkut-pink); border-color: var(--orkut-pink); color: #fff; }
 .comments{margin-top:8px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px;display:flex;flex-direction:column;gap:6px}
-/* Perfil */
-.profile{
-  background: var(--discord-dark);
-  border:1px solid rgba(255,255,255,.06);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  display:grid;
-  grid-template-rows:56px 1fr;
-  min-height: 0; 
-}
+
+/* Perfil (já coberto pela regra base, mas mantemos o topo) */
 .profile-top{display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.06);background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);border-top-left-radius: var(--radius);border-top-right-radius: var(--radius); min-height: 56px;}
 .profile-body{overflow:auto;padding:14px;display:grid;grid-template-columns:300px 1fr;gap:14px}
 .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px}
@@ -303,11 +305,7 @@ a{color:inherit;text-decoration:none}
 
 /* Estilos "EXPLORAR SERVIDORES" */
 .explore-servers {
-  background: var(--discord-dark);
-  border:1px solid rgba(255,255,255,.06);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  min-height: 0;
+  /* ... (regras base já aplicadas) ... */
   display: grid;
   grid-template-rows: auto 1fr;
 }
@@ -416,10 +414,7 @@ a{color:inherit;text-decoration:none}
 
 /* Estilo: Formulário de Criação */
 .create-community {
-  background: var(--discord-dark);
-  border: 1px solid rgba(255, 255, 255, .06);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  /* ... (regras base já aplicadas) ... */
   display: grid;
   grid-template-rows: auto 1fr;
 }
@@ -430,10 +425,7 @@ a{color:inherit;text-decoration:none}
 }
 
 .create-topic {
-  background: var(--discord-dark);
-  border: 1px solid rgba(255, 255, 255, .06);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  /* ... (regras base já aplicadas) ... */
   display: grid;
   grid-template-rows: auto 1fr;
 }
