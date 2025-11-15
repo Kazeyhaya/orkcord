@@ -157,7 +157,6 @@ a{color:inherit;text-decoration:none}
 /* Chat */
 .chat{background: var(--discord-dark);border:1px solid rgba(255,255,255,.06);border-radius: var(--radius);display:grid;grid-template-rows: 56px 1fr 74px;box-shadow: var(--shadow)}
 
-/* 👇 --- CORREÇÃO AQUI --- 👇 */
 /* Regras de layout de conteúdo base */
 .feed, .community-content, .profile, .explore-servers, .create-community, .create-topic {
   background: var(--discord-dark);
@@ -190,7 +189,6 @@ a{color:inherit;text-decoration:none}
 #view-create-topic {
   grid-template-rows: auto 1fr; /* Topo (auto), Formulário */
 }
-/* 👆 --- FIM DA CORREÇÃO --- 👆 */
 
 
 .feed-top{display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.06);background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);border-top-left-radius: var(--radius);border-top-right-radius: var(--radius); min-height: 56px;}
