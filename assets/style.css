@@ -156,16 +156,30 @@ a{color:inherit;text-decoration:none}
 
 /* Chat */
 .chat{background: var(--discord-dark);border:1px solid rgba(255,255,255,.06);border-radius: var(--radius);display:grid;grid-template-rows: 56px 1fr 74px;box-shadow: var(--shadow)}
-/* Feed (e Community Content) */
-.feed, .community-content {
+
+/* 👇 --- CORREÇÃO AQUI --- 👇 */
+/* Regra .feed (Feed Principal) */
+.feed {
   background: var(--discord-dark);
   border:1px solid rgba(255,255,255,.06);
   border-radius: var(--radius);
   display:grid;
-  grid-template-rows: 56px auto 1fr;
+  grid-template-rows: 56px auto 1fr; /* 3 Linhas: Topo, Compositor, Posts */
   box-shadow: var(--shadow);
   min-height: 0; 
 }
+/* Regra .community-content (Tópicos da Comunidade) */
+.community-content {
+  background: var(--discord-dark);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius);
+  display:grid;
+  grid-template-rows: 56px 1fr; /* 2 Linhas: Topo, Posts */
+  box-shadow: var(--shadow);
+  min-height: 0; 
+}
+/* 👆 --- FIM DA CORREÇÃO --- 👆 */
+
 #view-explore.feed {
   grid-template-rows: 56px 1fr; 
 }
@@ -225,8 +239,7 @@ a{color:inherit;text-decoration:none}
   color: var(--orkut-blue);
 }
 .chat-top{display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.06);background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);border-top-left-radius: var(--radius);border-top-right-radius: var(--radius); min-height: 56px;}
-.chat-topic{display:flex;align-items:center;gap:10px;min-width:0} /* <-- CORREÇÃO AQUI (min-width:0) */
-/* 👇 CORREÇÃO ADICIONADA 👇 */
+.chat-topic{display:flex;align-items:center;gap:10px;min-width:0} /* Adicionado min-width:0 */
 .chat-topic .meta {
   white-space: nowrap;
   overflow: hidden;
