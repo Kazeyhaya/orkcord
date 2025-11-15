@@ -605,7 +605,6 @@ a{color:inherit;text-decoration:none}
   margin-right: 5px;
 }
 
-/* 👇 NOVO BOTÃO DE MENU PARA COMUNIDADE (ESCONDIDO NO PC) 👇 */
 #btn-community-menu {
   display: none;
   border: none;
@@ -646,7 +645,7 @@ a{color:inherit;text-decoration:none}
     display: none; 
   }
   
-  /* A regra .header > .header-actions { display: none; } foi REMOVIDA */
+  /* A regra que escondia os botões foi removida */
 }
 
 /* Smartphone (640px) - Lógica do Menu Hamburger */
@@ -658,10 +657,9 @@ a{color:inherit;text-decoration:none}
   }
   
   #btn-mobile-menu {
-    display: grid; /* Mostra o botão ☰ do HEADER */
+    display: grid; 
   }
   
-  /* Mostra o botão ☰ da BARRA DE CANAL (só na vista de comunidade) */
   .app.view-community #btn-community-menu {
     display: grid;
   }

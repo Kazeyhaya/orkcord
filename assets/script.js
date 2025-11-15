@@ -625,6 +625,15 @@ function renderCommunityDetails(community) {
         renderAvatar(DOM.communityAvatarChannel, { user: community.emoji, avatar_url: null });
         DOM.communityAvatarChannel.textContent = escapeHtml(community.emoji);
     }
+    
+    // 👇 LÓGICA DE VISIBILIDADE DO BOTÃO DE EDITAR 👇
+    if (DOM.btnEditCommunity) {
+        if (community.owner_user === currentUser) {
+            DOM.btnEditCommunity.hidden = false;
+        } else {
+            DOM.btnEditCommunity.hidden = true;
+        }
+    }
 }
 
 
@@ -871,7 +880,6 @@ function activateCommunityView(name, options = {}) {
     DOM.communityMembersView.hidden = true;
     DOM.chatView.hidden = true;
     
-    // 👇 CORREÇÃO AQUI (para o contador "0 membros") 👇
     apiGetCommunityDetails(currentCommunityId); 
     apiGetCommunityMembers(currentCommunityId);
     
@@ -1053,6 +1061,7 @@ function mapAppDOM() {
 
     DOM.communityNameChannel = document.getElementById("community-name-channel");
     DOM.communityAvatarChannel = document.getElementById("community-avatar-channel");
+    DOM.btnEditCommunity = document.getElementById("btn-edit-community"); // <-- Botão de Editar
 
     DOM.btnNewTopic = document.getElementById("btn-new-topic");
     DOM.createTopicView = document.getElementById("view-create-topic");
@@ -1087,7 +1096,7 @@ function mapAppDOM() {
 
     DOM.btnMobileMenu = document.getElementById("btn-mobile-menu");
     DOM.serversList = document.querySelector(".servers");
-    DOM.btnCommunityMenu = document.getElementById("btn-community-menu"); // <-- Botão 2
+    DOM.btnCommunityMenu = document.getElementById("btn-community-menu"); 
 }
 
 function bindAppEvents() {
@@ -1183,7 +1192,6 @@ function bindAppEvents() {
         });
     });
 
-    // 👇 EVENT LISTENERS PARA OS DOIS BOTÕES DE MENU 👇
     const toggleServersMenu = () => {
         DOM.serversList.classList.toggle("is-open");
     };
@@ -1197,6 +1205,23 @@ function bindAppEvents() {
                 DOM.serversList.classList.remove("is-open");
             }
         }
+    });
+
+    // 👇 EVENT LISTENER PARA O BOTÃO DE EDITAR 👇
+    DOM.btnEditCommunity.addEventListener("click", () => {
+        const currentName = DOM.communityNameChannel.textContent;
+        openInputModal({
+            title: "Editar Nome da Comunidade",
+            initialValue: currentName,
+            onSave: (newName) => {
+                // TODO: Chamar a API de update
+                console.log("Novo nome (a salvar):", newName);
+                
+                // Por agora, apenas atualiza localmente:
+                DOM.communityNameChannel.textContent = newName;
+                alert("A funcionalidade de salvar no backend ainda não foi implementada!");
+            }
+        });
     });
 }
 
